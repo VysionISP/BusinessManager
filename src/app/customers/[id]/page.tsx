@@ -9,6 +9,8 @@ import { formatCurrency, formatDate } from "@/lib/format";
 import { getCustomerDetail } from "@/lib/queries";
 import { SiteForm } from "../SiteForm";
 import { createSite, deleteSite, updateSite } from "../actions";
+import { AssetForm } from "@/app/assets/AssetForm";
+import { createAsset, deleteAsset, updateAsset } from "@/app/assets/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -162,20 +164,41 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
             )}
           </Card>
 
-          {customer.assets.length > 0 && (
-            <Card title="Assets">
-              <ul className="space-y-2 text-sm">
-                {customer.assets.map((a) => (
-                  <li key={a.id} className="flex items-center justify-between">
-                    <span>
+          <Card title="Assets">
+            <div className="space-y-2">
+              {customer.assets.map((a) => (
+                <div key={a.id} className="rounded-lg border border-slate-100 p-3 text-sm dark:border-slate-800">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-medium">
                       {a.type} {a.location && `— ${a.location}`}
                     </span>
-                    <span className="text-xs text-slate-400">{a.nextServiceDate ? `Due ${formatDate(a.nextServiceDate)}` : ""}</span>
-                  </li>
-                ))}
-              </ul>
-            </Card>
-          )}
+                    <form action={deleteAsset.bind(null, customerId, a.id)}>
+                      <button type="submit" className="text-xs text-rose-600 hover:underline">
+                        Delete
+                      </button>
+                    </form>
+                  </div>
+                  <div className="mt-0.5 text-xs text-slate-400">
+                    {a.manufacturer} {a.model} {a.serialNumber && `· S/N ${a.serialNumber}`}
+                    {a.nextServiceDate && ` · Next service ${formatDate(a.nextServiceDate)}`}
+                  </div>
+                  <details className="mt-2">
+                    <summary className="cursor-pointer text-xs font-medium text-blue-600">Edit asset</summary>
+                    <div className="mt-2">
+                      <AssetForm asset={a} sites={customer.sites} action={updateAsset.bind(null, customerId, a.id)} submitLabel="Save asset" />
+                    </div>
+                  </details>
+                </div>
+              ))}
+              {customer.assets.length === 0 && <p className="text-sm text-slate-400">No assets recorded yet.</p>}
+            </div>
+            <details className="mt-4">
+              <summary className="cursor-pointer text-sm font-medium text-blue-600">+ Add an asset</summary>
+              <div className="mt-3">
+                <AssetForm sites={customer.sites} action={createAsset.bind(null, customerId)} />
+              </div>
+            </details>
+          </Card>
         </div>
       </div>
     </div>

@@ -665,6 +665,45 @@ async function main() {
 
   console.log("Form templates seeded.");
 
+  await prisma.asset.createMany({
+    data: [
+      {
+        customerId: sunridgeCustomer.id,
+        siteId: sunridgeSite.id,
+        type: "Emergency Light",
+        location: "Main corridor, Level 1",
+        serviceIntervalMonths: 6,
+        lastServiceDate: daysAgo(180),
+        nextServiceDate: daysFromNow(5),
+      },
+      {
+        customerId: meadowbankCustomer.id,
+        siteId: meadowbankSite.id,
+        type: "Switchboard",
+        location: "Main switch room",
+        manufacturer: "Schneider",
+        serviceIntervalMonths: 12,
+        lastServiceDate: daysAgo(340),
+        nextServiceDate: daysFromNow(25),
+      },
+    ],
+  });
+
+  await prisma.recurringJobTemplate.create({
+    data: {
+      customerId: sunridgeCustomer.id,
+      siteId: sunridgeSite.id,
+      name: "6-monthly emergency light test",
+      frequencyMonths: 6,
+      nextDueDate: daysFromNow(5),
+      jobDescriptionTemplate: "Emergency lighting test & compliance certificate",
+      pricingMethod: "FIXED_PRICE",
+      defaultQuoteAmount: 850,
+    },
+  });
+
+  console.log("Assets & recurring job templates seeded.");
+
   await prisma.cashflowAdjustment.createMany({
     data: [
       { weekStarting: mondayOfWeek(1), direction: "OUT", category: "Compliance", description: "New apprentice PPE & tool kit", amount: 450 },
