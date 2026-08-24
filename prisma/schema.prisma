@@ -1,0 +1,156 @@
+// Electrical Business Manager — data model
+// Keeps Cost, Profit and Cash as separate, explicit concepts throughout.
+//
+// SQLite has no native enum support in Prisma, so enum-like fields are
+// plain strings constrained by TypeScript union types in src/lib/types.ts.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Singleton row holding business-wide settings used across calculations.
+model Settings {
+  id                       Int    @id @default(autoincrement())
+  businessName             String @default("Electrical Business Manager")
+  targetMarginPercent      Float  @default(20)
+  targetUtilisationPercent Float  @default(75)
+  openingBankBalance       Float  @default(0)
+}
+
+model Employee {
+  id                           Int      @id @default(autoincrement())
+  name                         String
+  role                         String
+  employeeType                 String   @default("EMPLOYEE") // EMPLOYEE | SUBCONTRACTOR
+  payType                      String   @default("HOURLY") // HOURLY | SALARY
+  baseHourlyRate               Float    @default(0)
+  annualSalary                 Float? // used when payType = SALARY
+  ordinaryHoursPerWeek         Float    @default(38)
+  overtimeHoursPerWeek         Float    @default(0)
+  overtimeMultiplier           Float    @default(1.5)
+  weeklyAllowances             Float    @default(0)
+  superRatePercent             Float    @default(11.5)
+  onCostPercent                Float    @default(15) // workcover, leave loading, other on-costs
+  expectedBillableHoursPerWeek Float    @default(32)
+  chargeOutRate                Float    @default(0)
+  active                       Boolean  @default(true)
+  createdAt                    DateTime @default(now())
+
+  payrollEntries PayrollEntry[]
+}
+
+model PayrollEntry {
+  id               Int      @id @default(autoincrement())
+  employeeId       Int
+  employee         Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  weekCommencing   DateTime
+  ordinaryHours    Float    @default(0)
+  overtimeHours    Float    @default(0)
+  allowances       Float    @default(0)
+  leaveHours       Float    @default(0)
+  sickHours        Float    @default(0)
+  nonBillableHours Float    @default(0)
+  billableHours    Float    @default(0)
+  createdAt        DateTime @default(now())
+
+  @@unique([employeeId, weekCommencing])
+  @@index([weekCommencing])
+}
+
+model OverheadExpense {
+  id        Int      @id @default(autoincrement())
+  category  String // INSURANCE | VEHICLES | SOFTWARE | COMMUNICATIONS | ADMINISTRATION | TOOLS_EQUIPMENT | LICENCES_COMPLIANCE | OTHER
+  name      String
+  amount    Float
+  frequency String // WEEKLY | MONTHLY | QUARTERLY | ANNUAL
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+model Job {
+  id                     Int       @id @default(autoincrement())
+  jobNumber              String    @unique
+  customerName           String
+  description            String
+  status                 String    @default("LEAD") // LEAD | QUOTED | APPROVED | IN_PROGRESS | COMPLETE | INVOICED | PAID | LOST
+  quoteDate              DateTime?
+  startDate              DateTime?
+  expectedCompletionDate DateTime?
+
+  // Original budget / quote
+  quoteAmount            Float @default(0)
+  budgetLabourHours      Float @default(0)
+  budgetLabourCost       Float @default(0)
+  budgetMaterials        Float @default(0)
+  budgetSubcontractors   Float @default(0)
+  budgetOtherDirectCosts Float @default(0)
+
+  // Management estimate of completion, drives WIP
+  percentComplete     Float  @default(0)
+  targetMarginPercent Float? // overrides business default if set
+
+  createdAt DateTime @default(now())
+
+  costEntries JobCostEntry[]
+  invoices    Invoice[]
+}
+
+model JobCostEntry {
+  id          Int      @id @default(autoincrement())
+  jobId       Int
+  job         Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  date        DateTime
+  category    String // LABOUR | MATERIALS | SUBCONTRACTOR | EQUIPMENT | OTHER
+  description String
+  hours       Float? // informational, only meaningful for LABOUR
+  amount      Float
+  createdAt   DateTime @default(now())
+
+  @@index([jobId])
+}
+
+model Invoice {
+  id            Int      @id @default(autoincrement())
+  jobId         Int
+  job           Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  invoiceNumber String
+  type          String   @default("PROGRESS") // DEPOSIT | PROGRESS | FINAL
+  issueDate     DateTime
+  dueDate       DateTime
+  amount        Float
+  createdAt     DateTime @default(now())
+
+  payments Payment[]
+
+  @@index([jobId])
+}
+
+model Payment {
+  id        Int      @id @default(autoincrement())
+  invoiceId Int
+  invoice   Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  date      DateTime
+  amount    Float
+  createdAt DateTime @default(now())
+
+  @@index([invoiceId])
+}
+
+// One-off / ad-hoc forecast items layered on top of auto-computed
+// recurring payroll, super and overheads in the 13-week cashflow.
+model CashflowAdjustment {
+  id           Int      @id @default(autoincrement())
+  weekStarting DateTime
+  direction    String // IN | OUT
+  category     String
+  description  String
+  amount       Float
+  createdAt    DateTime @default(now())
+
+  @@index([weekStarting])
+}
