@@ -25,7 +25,9 @@ export const Modal = forwardRef<ModalHandle, { title: string; children: React.Re
       onClick={(e) => {
         if (e.target === dialogRef.current) dialogRef.current?.close();
       }}
-      className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-0 shadow-xl backdrop:bg-slate-900/40 dark:border-slate-800 dark:bg-slate-900"
+      // fixed inset-0 m-auto re-centres the dialog: the browser's built-in
+      // centring relies on UA margin:auto, which Tailwind's preflight resets.
+      className="fixed inset-0 m-auto w-full max-w-md rounded-xl border border-slate-200 bg-white p-0 shadow-xl backdrop:bg-slate-900/40 dark:border-slate-800 dark:bg-slate-900"
     >
       <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3 dark:border-slate-800">
         <h3 className="font-semibold text-slate-800 dark:text-slate-100">{title}</h3>
