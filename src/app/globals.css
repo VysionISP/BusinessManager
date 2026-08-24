@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+/* Class-based dark mode (toggled via .dark on <html>) instead of Tailwind
+   v4's default prefers-color-scheme media strategy, so the theme toggle in
+   AppShell can override the OS preference. See layout.tsx's blocking
+   init script for how .dark gets applied before first paint. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -12,11 +18,9 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+.dark {
+  --background: #0a0a0a;
+  --foreground: #ededed;
 }
 
 body {

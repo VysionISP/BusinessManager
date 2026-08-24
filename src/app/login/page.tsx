@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { FormField, Button } from "@/components/FormField";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { login } from "./actions";
@@ -14,10 +15,15 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   const { error } = await searchParams;
 
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-slate-50 px-4 dark:bg-slate-950">
+    <div className="relative flex min-h-dvh items-center justify-center bg-slate-50 px-4 dark:bg-slate-950">
+      <div className="absolute right-4 top-4">
+        <ThemeToggle />
+      </div>
       <div className="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div className="mb-6 flex items-center gap-2.5">
-          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-600 text-sm font-bold text-white">V</span>
+          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 text-sm font-bold text-white shadow-lg shadow-indigo-950/20">
+            V
+          </span>
           <span className="text-lg font-semibold text-slate-900 dark:text-slate-50">Sign in</span>
         </div>
         {error && (

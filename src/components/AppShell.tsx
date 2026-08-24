@@ -35,6 +35,7 @@ import {
 import type { SessionUser } from "@/lib/auth";
 import { USER_ROLE_LABELS, type UserRole } from "@/lib/types";
 import { logout } from "@/lib/authActions";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 interface NavLink {
   href: string;
@@ -273,6 +274,7 @@ export function AppShell({
                 <div className="text-xs text-slate-400">{USER_ROLE_LABELS[user.role]}</div>
               </div>
             </div>
+            <ThemeToggle />
             <form action={logout}>
               <button
                 type="submit"
