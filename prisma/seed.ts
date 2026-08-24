@@ -622,6 +622,49 @@ async function main() {
 
   console.log("Enquiries seeded.");
 
+  await prisma.formTemplate.createMany({
+    data: [
+      {
+        name: "Take 5",
+        description: "Quick pre-start hazard check",
+        isCertificate: false,
+        fieldsJson: JSON.stringify([
+          { id: "f0", label: "Task being performed", type: "TEXT", required: true },
+          { id: "f1", label: "Hazards identified", type: "LONG_TEXT", required: true },
+          { id: "f2", label: "Controls in place", type: "LONG_TEXT", required: true },
+          { id: "f3", label: "Safe to proceed?", type: "YES_NO", required: true },
+          { id: "f4", label: "Worker signature", type: "SIGNATURE", required: true },
+        ]),
+      },
+      {
+        name: "RCD Test",
+        description: "Residual current device test record",
+        isCertificate: true,
+        fieldsJson: JSON.stringify([
+          { id: "f0", label: "RCD location", type: "TEXT", required: true },
+          { id: "f1", label: "Trip time (ms)", type: "NUMBER", required: true },
+          { id: "f2", label: "Result", type: "DROPDOWN", options: ["Pass", "Fail"], required: true },
+          { id: "f3", label: "Licensed electrical worker", type: "TEXT", required: true },
+          { id: "f4", label: "Licence number", type: "TEXT", required: true },
+          { id: "f5", label: "Signature", type: "SIGNATURE", required: true },
+        ]),
+      },
+      {
+        name: "Customer completion sign-off",
+        description: "Customer confirms work is complete and satisfactory",
+        isCertificate: false,
+        fieldsJson: JSON.stringify([
+          { id: "f0", label: "Work completed as described?", type: "YES_NO", required: true },
+          { id: "f1", label: "Comments", type: "LONG_TEXT" },
+          { id: "f2", label: "Customer name", type: "TEXT", required: true },
+          { id: "f3", label: "Customer signature", type: "SIGNATURE", required: true },
+        ]),
+      },
+    ],
+  });
+
+  console.log("Form templates seeded.");
+
   await prisma.cashflowAdjustment.createMany({
     data: [
       { weekStarting: mondayOfWeek(1), direction: "OUT", category: "Compliance", description: "New apprentice PPE & tool kit", amount: 450 },

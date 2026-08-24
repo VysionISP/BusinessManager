@@ -6,6 +6,7 @@ import { Button, FormField } from "@/components/FormField";
 import { JobStatusBadge, TrafficBadge } from "@/components/Badge";
 import { formatCurrency, formatDate, formatPercent } from "@/lib/format";
 import { progressClaimSummary } from "@/lib/calculations";
+import { prisma } from "@/lib/db";
 import { getJobDetail } from "@/lib/queries";
 import { JOB_STATUSES, JOB_STATUS_LABELS, PO_STATUS_LABELS, PRICING_METHOD_LABELS } from "@/lib/types";
 import { ChargeUpInvoiceForm } from "./ChargeUpInvoiceForm";
@@ -55,7 +56,10 @@ function BudgetRow({ label, budget, actual }: { label: string; budget: number; a
 export default async function JobDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const jobId = Number(id);
-  const detail = await getJobDetail(jobId);
+  const [detail, formTemplates] = await Promise.all([
+    getJobDetail(jobId),
+    prisma.formTemplate.findMany({ where: { active: true }, orderBy: { name: "asc" } }),
+  ]);
   if (!detail) notFound();
   const { job, financials } = detail;
 
@@ -261,6 +265,42 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
                 </tbody>
               </table>
             </div>
+          </Card>
+
+          <Card title="Forms & certificates">
+            {job.formSubmissions.length > 0 && (
+              <ul className="mb-4 space-y-1 text-sm">
+                {job.formSubmissions.map((s) => (
+                  <li key={s.id} className="flex items-center justify-between">
+                    <Link href={`/forms/submissions/${s.id}`} className="text-blue-600 hover:underline">
+                      {s.formTemplate.name}
+                    </Link>
+                    <span className="text-xs text-slate-400">{formatDate(s.submittedAt)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {formTemplates.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {formTemplates.map((t) => (
+                  <Link
+                    key={t.id}
+                    href={`/forms/submit/${t.id}?jobId=${jobId}`}
+                    className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"
+                  >
+                    + Fill out {t.name}
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-slate-400">
+                No form templates yet —{" "}
+                <Link href="/forms/templates/new" className="text-blue-600 hover:underline">
+                  create one
+                </Link>
+                .
+              </p>
+            )}
           </Card>
 
           {job.pricingMethod === "CHARGE_UP" && (
