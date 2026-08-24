@@ -64,6 +64,16 @@ A full job-management system in the spirit of Fergus, built around the core prin
   all log to a per-job timeline.
 - **Settings** — target margin, target utilisation and the current bank balance (the cashflow
   forecast's starting point).
+- **User accounts & role-based access** — real login (email + password, DB-backed sessions). Three
+  roles: **Admin** (everything, including managing users), **Office** (everything except user
+  management), and **Field** (jobs, scheduling, forms/certificates and stock only — no pricing,
+  payroll, or other financial data, enforced both in navigation and at the route level). The very
+  first visit creates the initial Admin account; every other user is added from Settings → Users.
+- **Stock / warehouse** — materials and equipment with on-hand quantity, reorder levels and unit
+  cost; receive, adjust or issue stock to a job (issuing posts a materials cost entry automatically).
+  Items can be looked up by scanning a barcode with a phone camera (via the browser's native
+  `BarcodeDetector` API where supported) or by typing the code in — the Dashboard flags any item at
+  or below its reorder level.
 
 ### Deliberately out of scope
 
@@ -75,13 +85,8 @@ first rather than being silently built in:
   instead, but a true offline-capable native app is a separate build.
 - **Real notification delivery (email/SMS)** — needs SMTP/Twilio-style credentials. What exists
   instead is in-app alerts (Dashboard) computed live from current data — overdue follow-ups, stalled
-  quotes, POs/variations awaiting a decision, assets overdue for service, and the original cost/margin/
-  cash alerts.
-- **User permissions & role-based login** — the app is currently single-user with no authentication.
-  Real login (and therefore real role-based access) is a distinct, security-sensitive feature that's
-  worth a deliberate decision on approach rather than bolting on.
-- **Barcode scanning / serialised inventory / warehouse stock** — no hardware integration available;
-  the Assets register covers customer-owned equipment tracking without it.
+  quotes, POs/variations awaiting a decision, assets overdue for service, low stock, and the original
+  cost/margin/cash alerts.
 
 ## Tech stack
 
@@ -108,6 +113,9 @@ npm run dev                  # http://localhost:3000
 
 That's it — the database starts completely empty, ready for your own employees, overheads, jobs
 and expenses. Add your real data through the app itself (Employees, Overheads, Jobs, etc.).
+
+The very first visit to the app (with no users yet) shows a one-time "Create your admin account"
+screen instead of the dashboard — that account can then add everyone else from Settings → Users.
 
 Other useful commands:
 

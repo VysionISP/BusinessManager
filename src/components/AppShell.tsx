@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   Banknote,
   BarChart3,
+  Boxes,
   Briefcase,
   Calculator,
   CalendarDays,
@@ -16,6 +17,7 @@ import {
   Inbox,
   LayoutDashboard,
   LineChart,
+  LogOut,
   Menu,
   PieChart,
   Receipt,
@@ -30,11 +32,15 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
+import type { SessionUser } from "@/lib/auth";
+import { USER_ROLE_LABELS, type UserRole } from "@/lib/types";
+import { logout } from "@/lib/authActions";
 
 interface NavLink {
   href: string;
   label: string;
   icon: LucideIcon;
+  roles?: UserRole[]; // omitted = every role can see it
 }
 interface NavGroup {
   label: string;
@@ -47,15 +53,17 @@ function isGroup(item: NavItem): item is NavGroup {
   return "links" in item;
 }
 
+const OFFICE_ONLY: UserRole[] = ["ADMIN", "OFFICE"];
+
 const NAV: NavItem[] = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   {
     label: "Sales",
     icon: Inbox,
     links: [
-      { href: "/enquiries", label: "Enquiries", icon: Inbox },
-      { href: "/customers", label: "Customers", icon: Users },
-      { href: "/quotes", label: "Quotes", icon: FileText },
+      { href: "/enquiries", label: "Enquiries", icon: Inbox, roles: OFFICE_ONLY },
+      { href: "/customers", label: "Customers", icon: Users, roles: OFFICE_ONLY },
+      { href: "/quotes", label: "Quotes", icon: FileText, roles: OFFICE_ONLY },
     ],
   },
   {
@@ -66,29 +74,30 @@ const NAV: NavItem[] = [
       { href: "/scheduling", label: "Scheduling", icon: CalendarDays },
     ],
   },
+  { href: "/stock", label: "Stock", icon: Boxes },
   {
     label: "Purchasing",
     icon: ShoppingCart,
     links: [
-      { href: "/suppliers", label: "Suppliers", icon: Truck },
-      { href: "/purchase-orders", label: "Purchase orders", icon: ClipboardList },
+      { href: "/suppliers", label: "Suppliers", icon: Truck, roles: OFFICE_ONLY },
+      { href: "/purchase-orders", label: "Purchase orders", icon: ClipboardList, roles: OFFICE_ONLY },
     ],
   },
   {
     label: "Finance",
     icon: Banknote,
     links: [
-      { href: "/employees", label: "Employees", icon: UserCog },
-      { href: "/payroll", label: "Payroll", icon: Banknote },
-      { href: "/overheads", label: "Overheads", icon: Receipt },
-      { href: "/expenses", label: "Expenses", icon: CreditCard },
-      { href: "/break-even", label: "Break-even", icon: Scale },
-      { href: "/quote-calculator", label: "Quote calculator", icon: Calculator },
-      { href: "/cashflow", label: "Cashflow", icon: LineChart },
-      { href: "/budget", label: "Budget vs actual", icon: PieChart },
+      { href: "/employees", label: "Employees", icon: UserCog, roles: OFFICE_ONLY },
+      { href: "/payroll", label: "Payroll", icon: Banknote, roles: OFFICE_ONLY },
+      { href: "/overheads", label: "Overheads", icon: Receipt, roles: OFFICE_ONLY },
+      { href: "/expenses", label: "Expenses", icon: CreditCard, roles: OFFICE_ONLY },
+      { href: "/break-even", label: "Break-even", icon: Scale, roles: OFFICE_ONLY },
+      { href: "/quote-calculator", label: "Quote calculator", icon: Calculator, roles: OFFICE_ONLY },
+      { href: "/cashflow", label: "Cashflow", icon: LineChart, roles: OFFICE_ONLY },
+      { href: "/budget", label: "Budget vs actual", icon: PieChart, roles: OFFICE_ONLY },
     ],
   },
-  { href: "/reports", label: "Reports", icon: BarChart3 },
+  { href: "/reports", label: "Reports", icon: BarChart3, roles: OFFICE_ONLY },
   {
     label: "Compliance",
     icon: ShieldCheck,
@@ -97,8 +106,14 @@ const NAV: NavItem[] = [
       { href: "/assets", label: "Assets & recurring jobs", icon: Wrench },
     ],
   },
-  { href: "/settings", label: "Settings", icon: SettingsIcon },
+  { href: "/settings", label: "Settings", icon: SettingsIcon, roles: OFFICE_ONLY },
 ];
+
+function visibleFor(role: UserRole) {
+  const canSee = (link: NavLink) => !link.roles || link.roles.includes(role);
+  return NAV.map((item) => (isGroup(item) ? { ...item, links: item.links.filter(canSee) } : item))
+    .filter((item) => (isGroup(item) ? item.links.length > 0 : canSee(item)));
+}
 
 function isActive(pathname: string, href: string): boolean {
   return href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
@@ -121,10 +136,11 @@ function NavLinkItem({ link, pathname, onNavigate }: { link: NavLink; pathname: 
   );
 }
 
-function SidebarContent({ pathname, onNavigate }: { pathname: string; onNavigate?: () => void }) {
+function SidebarContent({ pathname, role, onNavigate }: { pathname: string; role: UserRole; onNavigate?: () => void }) {
+  const nav = visibleFor(role);
   return (
     <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-4">
-      {NAV.map((item, i) =>
+      {nav.map((item, i) =>
         isGroup(item) ? (
           <div key={i}>
             <div className="mb-1 flex items-center gap-2 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
@@ -183,7 +199,15 @@ function CurrentPageBreadcrumb({ pathname }: { pathname: string }) {
   );
 }
 
-export function AppShell({ businessName, children }: { businessName: string; children: React.ReactNode }) {
+export function AppShell({
+  businessName,
+  user,
+  children,
+}: {
+  businessName: string;
+  user: SessionUser;
+  children: React.ReactNode;
+}) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -192,7 +216,7 @@ export function AppShell({ businessName, children }: { businessName: string; chi
       {/* Desktop sidebar */}
       <aside className="hidden w-64 shrink-0 flex-col border-r border-slate-800 bg-slate-900 md:flex">
         <Logo />
-        <SidebarContent pathname={pathname} />
+        <SidebarContent pathname={pathname} role={user.role} />
       </aside>
 
       {/* Mobile drawer */}
@@ -211,7 +235,7 @@ export function AppShell({ businessName, children }: { businessName: string; chi
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <SidebarContent pathname={pathname} onNavigate={() => setMobileOpen(false)} />
+            <SidebarContent pathname={pathname} role={user.role} onNavigate={() => setMobileOpen(false)} />
           </aside>
         </div>
       )}
@@ -229,9 +253,25 @@ export function AppShell({ businessName, children }: { businessName: string; chi
           <CurrentPageBreadcrumb pathname={pathname} />
           <div className="ml-auto flex items-center gap-3">
             <span className="hidden text-sm font-medium text-slate-500 dark:text-slate-400 sm:inline">{businessName}</span>
-            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-xs font-semibold text-blue-700 dark:bg-blue-950/60 dark:text-blue-300">
-              {initials(businessName)}
-            </span>
+            <div className="hidden items-center gap-2 sm:flex">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-xs font-semibold text-blue-700 dark:bg-blue-950/60 dark:text-blue-300">
+                {initials(user.name)}
+              </span>
+              <div className="leading-tight">
+                <div className="text-sm font-medium text-slate-800 dark:text-slate-100">{user.name}</div>
+                <div className="text-xs text-slate-400">{USER_ROLE_LABELS[user.role]}</div>
+              </div>
+            </div>
+            <form action={logout}>
+              <button
+                type="submit"
+                className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sm font-medium text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+                title="Sign out"
+              >
+                <LogOut className="h-4 w-4" strokeWidth={2.25} />
+                <span className="hidden lg:inline">Sign out</span>
+              </button>
+            </form>
           </div>
         </header>
         <main className="flex-1 overflow-y-auto">

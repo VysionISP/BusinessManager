@@ -1,6 +1,21 @@
 // String-literal unions for the "enum-like" fields stored as plain
 // strings in SQLite (Prisma has no native SQLite enum support).
 
+export const USER_ROLES = ["ADMIN", "OFFICE", "FIELD"] as const;
+export type UserRole = (typeof USER_ROLES)[number];
+
+export const USER_ROLE_LABELS: Record<UserRole, string> = {
+  ADMIN: "Admin",
+  OFFICE: "Office",
+  FIELD: "Field",
+};
+
+export const USER_ROLE_DESCRIPTIONS: Record<UserRole, string> = {
+  ADMIN: "Full access, including user management.",
+  OFFICE: "Full access to jobs, sales and finance — everything except user management.",
+  FIELD: "Jobs, scheduling and forms only — no pricing, payroll or other financial data.",
+};
+
 export const EMPLOYEE_TYPES = ["EMPLOYEE", "SUBCONTRACTOR"] as const;
 export type EmployeeType = (typeof EMPLOYEE_TYPES)[number];
 
@@ -317,3 +332,18 @@ export const SCHEDULE_EVENT_TYPE_LABELS: Record<ScheduleEventType, string> = {
 
 export const SCHEDULE_EVENT_STATUSES = ["SCHEDULED", "CONFIRMED", "IN_PROGRESS", "DONE", "CANCELLED"] as const;
 export type ScheduleEventStatus = (typeof SCHEDULE_EVENT_STATUSES)[number];
+
+// ---------------------------------------------------------------------------
+// Stock / warehouse
+// ---------------------------------------------------------------------------
+
+export const STOCK_MOVEMENT_TYPES = ["RECEIVE", "ISSUE", "ADJUSTMENT"] as const;
+export type StockMovementType = (typeof STOCK_MOVEMENT_TYPES)[number];
+
+export const STOCK_MOVEMENT_TYPE_LABELS: Record<StockMovementType, string> = {
+  RECEIVE: "Received",
+  ISSUE: "Issued to job",
+  ADJUSTMENT: "Adjustment",
+};
+
+export const STOCK_UNITS = ["EA", "M", "L", "KG", "BOX", "ROLL", "PACK"] as const;

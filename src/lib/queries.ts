@@ -171,6 +171,7 @@ export interface DashboardData {
   posAwaitingApproval: number;
   variationsAwaitingApproval: number;
   assetsOverdue: number;
+  stockBelowReorder: number;
 }
 
 export async function getDashboardData(): Promise<DashboardData> {
@@ -188,6 +189,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     posAwaitingApproval,
     variationsAwaitingApproval,
     assetsOverdue,
+    lowStockItems,
   ] = await Promise.all([
     getEmployees(true),
     getOverheads(true),
@@ -200,7 +202,9 @@ export async function getDashboardData(): Promise<DashboardData> {
     prisma.purchaseOrder.count({ where: { status: "APPROVAL_REQUIRED" } }),
     prisma.variation.count({ where: { status: "PENDING" } }),
     prisma.asset.count({ where: { nextServiceDate: { lte: now } } }),
+    prisma.stockItem.findMany({ where: { active: true }, select: { quantityOnHand: true, reorderLevel: true } }),
   ]);
+  const stockBelowReorder = lowStockItems.filter((i) => i.quantityOnHand <= i.reorderLevel).length;
 
   const runningCosts = businessRunningCosts(employees, overheads);
   const labour = labourStats(employees, overheads);
@@ -278,6 +282,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     posAwaitingApproval,
     variationsAwaitingApproval,
     assetsOverdue,
+    stockBelowReorder,
   };
 }
 

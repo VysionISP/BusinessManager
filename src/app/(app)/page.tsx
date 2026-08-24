@@ -8,6 +8,7 @@ import { Table, Td, Th, THead, Tr } from "@/components/Table";
 import { formatCurrency, formatPercent } from "@/lib/format";
 import { getDashboardData } from "@/lib/queries";
 import { prisma } from "@/lib/db";
+import { getSession } from "@/lib/auth";
 import { addDays, startOfDay } from "@/lib/dates";
 import { SCHEDULE_EVENT_TYPE_LABELS } from "@/lib/types";
 import type { AlertSeverity } from "@/lib/calculations";
@@ -96,20 +97,90 @@ function buildAlerts(data: Awaited<ReturnType<typeof getDashboardData>>) {
       href: "/assets",
     });
   }
+  if (data.stockBelowReorder > 0) {
+    alerts.push({
+      severity: "orange",
+      message: `${data.stockBelowReorder} stock item${data.stockBelowReorder > 1 ? "s are" : " is"} at or below reorder level.`,
+      href: "/stock",
+    });
+  }
 
   return alerts;
 }
 
-export default async function DashboardPage() {
+function getTodaysSchedule() {
   const today = startOfDay();
-  const [data, todaysSchedule] = await Promise.all([
-    getDashboardData(),
-    prisma.scheduleEvent.findMany({
-      where: { startAt: { gte: today, lt: addDays(today, 1) } },
-      include: { employee: true, job: true },
-      orderBy: { startAt: "asc" },
-    }),
-  ]);
+  return prisma.scheduleEvent.findMany({
+    where: { startAt: { gte: today, lt: addDays(today, 1) } },
+    include: { employee: true, job: true },
+    orderBy: { startAt: "asc" },
+  });
+}
+
+function ScheduleList({ events }: { events: Awaited<ReturnType<typeof getTodaysSchedule>> }) {
+  if (events.length === 0) {
+    return <p className="py-4 text-center text-sm text-slate-400">Nothing scheduled for today.</p>;
+  }
+  return (
+    <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+      {events.map((e) => (
+        <li key={e.id} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
+          <span className="w-24 shrink-0 text-xs font-medium text-slate-500 dark:text-slate-400">
+            {TIME_FORMATTER.format(e.startAt)}–{TIME_FORMATTER.format(e.endAt)}
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-sm font-medium text-slate-800 dark:text-slate-200">
+              {e.title}
+              {e.job && (
+                <>
+                  {" · "}
+                  <Link href={`/jobs/${e.job.id}`} className="text-blue-600 hover:underline">
+                    {e.job.jobNumber}
+                  </Link>
+                </>
+              )}
+            </div>
+            <div className="truncate text-xs text-slate-400">
+              {e.employee?.name ?? "Unassigned"} · {SCHEDULE_EVENT_TYPE_LABELS[e.eventType as keyof typeof SCHEDULE_EVENT_TYPE_LABELS] ?? e.eventType}
+            </div>
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function FieldDashboard({ todaysSchedule }: { todaysSchedule: Awaited<ReturnType<typeof getTodaysSchedule>> }) {
+  return (
+    <div>
+      <PageHeader title="Dashboard" description="Today's schedule and jobs." />
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+        <Card title="Today's schedule" icon={CalendarDays}>
+          <ScheduleList events={todaysSchedule} />
+          <Link href="/scheduling" className="mt-3 inline-block text-sm font-medium text-blue-600 hover:underline">
+            Open scheduling →
+          </Link>
+        </Card>
+        <Card title="Jobs" icon={Briefcase}>
+          <p className="text-sm text-slate-500 dark:text-slate-400">View job details, log hours and materials, and fill out forms from the job page.</p>
+          <Link href="/jobs" className="mt-3 inline-block text-sm font-medium text-blue-600 hover:underline">
+            All jobs →
+          </Link>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+export default async function DashboardPage() {
+  const session = await getSession();
+  const todaysSchedule = await getTodaysSchedule();
+
+  if (session?.role === "FIELD") {
+    return <FieldDashboard todaysSchedule={todaysSchedule} />;
+  }
+
+  const data = await getDashboardData();
   const alerts = buildAlerts(data);
 
   return (
@@ -184,35 +255,7 @@ export default async function DashboardPage() {
       <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-3">
         <div className="lg:col-span-2">
           <Card title="Today's schedule" icon={CalendarDays}>
-            {todaysSchedule.length > 0 ? (
-              <ul className="divide-y divide-slate-100 dark:divide-slate-800">
-                {todaysSchedule.map((e) => (
-                  <li key={e.id} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
-                    <span className="w-24 shrink-0 text-xs font-medium text-slate-500 dark:text-slate-400">
-                      {TIME_FORMATTER.format(e.startAt)}–{TIME_FORMATTER.format(e.endAt)}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm font-medium text-slate-800 dark:text-slate-200">
-                        {e.title}
-                        {e.job && (
-                          <>
-                            {" · "}
-                            <Link href={`/jobs/${e.job.id}`} className="text-blue-600 hover:underline">
-                              {e.job.jobNumber}
-                            </Link>
-                          </>
-                        )}
-                      </div>
-                      <div className="truncate text-xs text-slate-400">
-                        {e.employee?.name ?? "Unassigned"} · {SCHEDULE_EVENT_TYPE_LABELS[e.eventType as keyof typeof SCHEDULE_EVENT_TYPE_LABELS] ?? e.eventType}
-                      </div>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="py-4 text-center text-sm text-slate-400">Nothing scheduled for today.</p>
-            )}
+            <ScheduleList events={todaysSchedule} />
             <Link href="/scheduling" className="mt-3 inline-block text-sm font-medium text-blue-600 hover:underline">
               Open scheduling →
             </Link>

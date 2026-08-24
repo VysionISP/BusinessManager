@@ -22,6 +22,32 @@ model Settings {
   openingBankBalance       Float  @default(0)
 }
 
+// ---------------------------------------------------------------------------
+// Auth — DB-backed sessions, no external auth provider required.
+// ---------------------------------------------------------------------------
+
+model User {
+  id           Int       @id @default(autoincrement())
+  name         String
+  email        String    @unique
+  passwordHash String
+  role         String    @default("OFFICE") // ADMIN | OFFICE | FIELD
+  employeeId   Int? // optional link to an Employee record, for FIELD users
+  active       Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  sessions     Session[]
+}
+
+model Session {
+  id        String   @id // random token, used as the session cookie value
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
 model Employee {
   id                           Int      @id @default(autoincrement())
   name                         String
@@ -289,6 +315,7 @@ model Job {
   formSubmissions  FormSubmission[]
   scheduleEvents   ScheduleEvent[]
   quotes           Quote[]
+  stockMovements   StockMovement[]
 
   @@index([customerId])
   @@index([status])
@@ -577,6 +604,47 @@ model CashflowAdjustment {
   createdAt    DateTime @default(now())
 
   @@index([weekStarting])
+}
+
+// ---------------------------------------------------------------------------
+// Stock / warehouse
+// ---------------------------------------------------------------------------
+
+model StockItem {
+  id             Int      @id @default(autoincrement())
+  name           String
+  sku            String?
+  barcode        String?  @unique
+  category       String?
+  unit           String   @default("EA") // EA, M, L, KG, BOX, ROLL, etc — free text
+  quantityOnHand Float    @default(0)
+  reorderLevel   Float    @default(0)
+  unitCost       Float    @default(0)
+  location       String?
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+
+  movements StockMovement[]
+
+  @@index([barcode])
+  @@index([name])
+}
+
+model StockMovement {
+  id          Int       @id @default(autoincrement())
+  stockItemId Int
+  stockItem   StockItem @relation(fields: [stockItemId], references: [id], onDelete: Cascade)
+  type        String // RECEIVE | ISSUE | ADJUSTMENT
+  // Signed: positive adds to stock (receive, upward adjustment), negative
+  // removes from stock (issue to a job, downward adjustment).
+  quantity    Float
+  jobId       Int?
+  job         Job?      @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  note        String?
+  createdAt   DateTime  @default(now())
+
+  @@index([stockItemId])
+  @@index([jobId])
 }
 
 // ---------------------------------------------------------------------------

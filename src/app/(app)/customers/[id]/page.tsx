@@ -10,8 +10,8 @@ import { formatCurrency, formatDate } from "@/lib/format";
 import { getCustomerDetail } from "@/lib/queries";
 import { SiteForm } from "../SiteForm";
 import { createSite, deleteSite, updateSite } from "../actions";
-import { AssetForm } from "@/app/assets/AssetForm";
-import { createAsset, deleteAsset, updateAsset } from "@/app/assets/actions";
+import { AssetForm } from "@/app/(app)/assets/AssetForm";
+import { createAsset, deleteAsset, updateAsset } from "@/app/(app)/assets/actions";
 
 export const dynamic = "force-dynamic";
 
