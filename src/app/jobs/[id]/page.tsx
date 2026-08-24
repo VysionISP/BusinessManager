@@ -6,7 +6,7 @@ import { Button, FormField } from "@/components/FormField";
 import { JobStatusBadge, TrafficBadge } from "@/components/Badge";
 import { formatCurrency, formatDate, formatPercent } from "@/lib/format";
 import { getJobDetail } from "@/lib/queries";
-import { JOB_STATUSES, JOB_STATUS_LABELS, PRICING_METHOD_LABELS } from "@/lib/types";
+import { JOB_STATUSES, JOB_STATUS_LABELS, PO_STATUS_LABELS, PRICING_METHOD_LABELS } from "@/lib/types";
 import { CostEntryForm } from "./CostEntryForm";
 import { InvoiceForm } from "./InvoiceForm";
 import { InvoiceRow } from "./InvoiceRow";
@@ -168,6 +168,51 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
 
           <Card title="Variations">
             <VariationList jobId={jobId} variations={job.variations} />
+          </Card>
+
+          <Card
+            title="Purchase orders"
+            action={
+              <Link href={`/purchase-orders/new?jobId=${jobId}`} className="text-xs font-medium text-blue-600 hover:underline">
+                + New PO
+              </Link>
+            }
+          >
+            {job.purchaseOrders.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">
+                      <th className="py-2 pr-4">PO #</th>
+                      <th className="py-2 pr-4">Supplier</th>
+                      <th className="py-2 pr-4">Total</th>
+                      <th className="py-2 pr-4">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {job.purchaseOrders.map((po) => (
+                      <tr key={po.id} className="border-b border-slate-50 last:border-0 dark:border-slate-800/60">
+                        <td className="py-2 pr-4 font-medium">
+                          <Link href={`/purchase-orders/${po.id}`} className="text-blue-600 hover:underline">
+                            {po.poNumber}
+                          </Link>
+                        </td>
+                        <td className="py-2 pr-4">{po.supplier.name}</td>
+                        <td className="py-2 pr-4">{formatCurrency(po.lines.reduce((s, l) => s + l.quantity * l.unitCost, 0))}</td>
+                        <td className="py-2 pr-4">
+                          <TrafficBadge
+                            severity={po.status === "CLOSED" || po.status === "INVOICED" ? "green" : po.status === "CANCELLED" ? "red" : "orange"}
+                            label={PO_STATUS_LABELS[po.status as keyof typeof PO_STATUS_LABELS] ?? po.status}
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="text-sm text-slate-400">No purchase orders raised for this job yet.</p>
+            )}
           </Card>
 
           <Card title="Actual costs">

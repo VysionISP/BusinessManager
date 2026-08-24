@@ -67,6 +67,14 @@ export async function getAllSitesWithCustomer() {
   return prisma.site.findMany({ include: { customer: true }, orderBy: [{ customer: { name: "asc" } }, { name: "asc" }] });
 }
 
+/** Lightweight job list for pickers (purchase orders, scheduling, etc.) — avoids pulling full financials. */
+export async function getJobsForSelection() {
+  return prisma.job.findMany({
+    select: { id: true, jobNumber: true, customer: { select: { name: true } }, phases: { select: { id: true, name: true } } },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Jobs & financials
 // ---------------------------------------------------------------------------
