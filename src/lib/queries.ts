@@ -12,6 +12,7 @@ import {
   overheadMonthlyEquivalent,
   payrollEntryCost,
   priceForMargin,
+  quoteTotals,
   trafficLight,
 } from "./calculations";
 import { addDays, mondayOfWeek } from "./dates";
@@ -165,16 +166,40 @@ export interface DashboardData {
   settings: Awaited<ReturnType<typeof getSettings>>;
   openEnquiries: number;
   quotesAwaitingAction: number;
+  enquiriesNeedingFollowUp: number;
+  stalledQuotes: number;
+  posAwaitingApproval: number;
+  variationsAwaitingApproval: number;
+  assetsOverdue: number;
 }
 
 export async function getDashboardData(): Promise<DashboardData> {
-  const [employees, overheads, jobs, settings, openEnquiries, quotesAwaitingAction] = await Promise.all([
+  const now = new Date();
+  const twoDaysAgo = addDays(now, -2);
+  const [
+    employees,
+    overheads,
+    jobs,
+    settings,
+    openEnquiries,
+    quotesAwaitingAction,
+    enquiriesNeedingFollowUp,
+    stalledQuotes,
+    posAwaitingApproval,
+    variationsAwaitingApproval,
+    assetsOverdue,
+  ] = await Promise.all([
     getEmployees(true),
     getOverheads(true),
     getAllJobFinancials(),
     getSettings(),
     prisma.enquiry.count({ where: { status: { notIn: ["CONVERTED", "LOST", "NO_RESPONSE"] } } }),
     prisma.quote.count({ where: { status: { in: ["DRAFT", "SENT"] } } }),
+    prisma.enquiry.count({ where: { status: { notIn: ["CONVERTED", "LOST", "NO_RESPONSE"] }, followUpDate: { lte: now } } }),
+    prisma.quote.count({ where: { status: "DRAFT", createdAt: { lte: twoDaysAgo } } }),
+    prisma.purchaseOrder.count({ where: { status: "APPROVAL_REQUIRED" } }),
+    prisma.variation.count({ where: { status: "PENDING" } }),
+    prisma.asset.count({ where: { nextServiceDate: { lte: now } } }),
   ]);
 
   const runningCosts = businessRunningCosts(employees, overheads);
@@ -248,6 +273,11 @@ export async function getDashboardData(): Promise<DashboardData> {
     settings,
     openEnquiries,
     quotesAwaitingAction,
+    enquiriesNeedingFollowUp,
+    stalledQuotes,
+    posAwaitingApproval,
+    variationsAwaitingApproval,
+    assetsOverdue,
   };
 }
 
@@ -462,4 +492,58 @@ export async function getBudgetVsActual(monthStart: Date): Promise<BudgetVsActua
   const totalActual = rows.reduce((sum, r) => sum + r.actual, 0);
 
   return { monthStart, rows, totalBudget, totalActual };
+}
+
+export interface SalesAndPurchasingStats {
+  enquiries: { total: number; converted: number; lost: number; conversionRatePercent: number };
+  quotes: { total: number; accepted: number; declined: number; conversionRatePercent: number; avgValue: number };
+  purchasing: {
+    totalCommitted: number;
+    openPoCount: number;
+    spendBySupplier: { supplierName: string; total: number }[];
+  };
+}
+
+export async function getSalesAndPurchasingStats(): Promise<SalesAndPurchasingStats> {
+  const [enquiries, quotesWithLines, purchaseOrders, supplierInvoices] = await Promise.all([
+    prisma.enquiry.findMany({ select: { status: true } }),
+    prisma.quote.findMany({ select: { status: true, lines: true } }),
+    prisma.purchaseOrder.findMany({ include: { lines: true } }),
+    prisma.supplierInvoice.findMany({ include: { supplier: true } }),
+  ]);
+
+  const enquiryTotal = enquiries.length;
+  const enquiryConverted = enquiries.filter((e) => e.status === "CONVERTED").length;
+  const enquiryLost = enquiries.filter((e) => e.status === "LOST" || e.status === "NO_RESPONSE").length;
+
+  const quoteTotal = quotesWithLines.length;
+  const quoteAccepted = quotesWithLines.filter((q) => q.status === "ACCEPTED");
+  const quoteDeclined = quotesWithLines.filter((q) => q.status === "DECLINED" || q.status === "EXPIRED").length;
+  const quoteValues = quotesWithLines.map((q) => quoteTotals(q.lines).totalSell);
+
+  const totalCommitted = committedCost(purchaseOrders, OPEN_PO_STATUSES);
+  const openPoCount = purchaseOrders.filter((po) => OPEN_PO_STATUSES.includes(po.status as (typeof OPEN_PO_STATUSES)[number])).length;
+
+  const spendMap = new Map<string, number>();
+  for (const si of supplierInvoices) {
+    spendMap.set(si.supplier.name, (spendMap.get(si.supplier.name) ?? 0) + si.amount);
+  }
+  const spendBySupplier = [...spendMap.entries()].map(([supplierName, total]) => ({ supplierName, total })).sort((a, b) => b.total - a.total);
+
+  return {
+    enquiries: {
+      total: enquiryTotal,
+      converted: enquiryConverted,
+      lost: enquiryLost,
+      conversionRatePercent: enquiryTotal > 0 ? (enquiryConverted / enquiryTotal) * 100 : 0,
+    },
+    quotes: {
+      total: quoteTotal,
+      accepted: quoteAccepted.length,
+      declined: quoteDeclined,
+      conversionRatePercent: quoteTotal > 0 ? (quoteAccepted.length / quoteTotal) * 100 : 0,
+      avgValue: quoteValues.length > 0 ? quoteValues.reduce((a, b) => a + b, 0) / quoteValues.length : 0,
+    },
+    purchasing: { totalCommitted, openPoCount, spendBySupplier },
+  };
 }

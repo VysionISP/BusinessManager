@@ -3,12 +3,12 @@ import { Card } from "@/components/Card";
 import { PageHeader } from "@/components/PageHeader";
 import { JobStatusBadge, TrafficBadge } from "@/components/Badge";
 import { formatCurrency, formatHours, formatPercent } from "@/lib/format";
-import { getReportsData } from "@/lib/queries";
+import { getReportsData, getSalesAndPurchasingStats } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
 
 export default async function ReportsPage() {
-  const data = await getReportsData();
+  const [data, salesPurchasing] = await Promise.all([getReportsData(), getSalesAndPurchasingStats()]);
   const rankedJobs = [...data.jobs]
     .filter((jf) => jf.job.status !== "LEAD" && jf.job.status !== "LOST")
     .sort((a, b) => b.forecast.forecastMarginPercent - a.forecast.forecastMarginPercent);
@@ -17,7 +17,7 @@ export default async function ReportsPage() {
 
   return (
     <div>
-      <PageHeader title="Reports" description="Job profitability, a simplified management P&L, and employee productivity." />
+      <PageHeader title="Reports" description="Job profitability, a simplified management P&L, employee productivity, sales pipeline and purchasing." />
 
       <div className="space-y-5">
         <Card title="Job profitability — most to least profitable">
@@ -123,6 +123,51 @@ export default async function ReportsPage() {
                 </tbody>
               </table>
             </div>
+          </Card>
+        </div>
+
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+          <Card title="Sales pipeline">
+            <div className="space-y-1.5 text-sm">
+              <Row label="Enquiries received" value={String(salesPurchasing.enquiries.total)} />
+              <Row label="Converted to jobs" value={String(salesPurchasing.enquiries.converted)} sub />
+              <Row label="Lost / no response" value={String(salesPurchasing.enquiries.lost)} sub />
+              <Row label="Enquiry conversion rate" value={formatPercent(salesPurchasing.enquiries.conversionRatePercent, 1)} bold />
+              <div className="my-2 border-t border-slate-100 dark:border-slate-800" />
+              <Row label="Quotes issued" value={String(salesPurchasing.quotes.total)} />
+              <Row label="Accepted" value={String(salesPurchasing.quotes.accepted)} sub />
+              <Row label="Declined / expired" value={String(salesPurchasing.quotes.declined)} sub />
+              <Row label="Quote win rate" value={formatPercent(salesPurchasing.quotes.conversionRatePercent, 1)} bold />
+              <Row label="Average quote value" value={formatCurrency(salesPurchasing.quotes.avgValue)} sub />
+            </div>
+            <div className="mt-4 flex gap-4 text-sm font-medium">
+              <Link href="/enquiries" className="text-blue-600 hover:underline">
+                Enquiries →
+              </Link>
+              <Link href="/quotes" className="text-blue-600 hover:underline">
+                Quotes →
+              </Link>
+            </div>
+          </Card>
+
+          <Card title="Purchasing">
+            <div className="space-y-1.5 text-sm">
+              <Row label="Committed (open POs)" value={formatCurrency(salesPurchasing.purchasing.totalCommitted)} bold />
+              <Row label="Open purchase orders" value={String(salesPurchasing.purchasing.openPoCount)} sub />
+            </div>
+            {salesPurchasing.purchasing.spendBySupplier.length > 0 && (
+              <div className="mt-4">
+                <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Spend by supplier</div>
+                <div className="space-y-1 text-sm">
+                  {salesPurchasing.purchasing.spendBySupplier.slice(0, 6).map((s) => (
+                    <Row key={s.supplierName} label={s.supplierName} value={formatCurrency(s.total)} />
+                  ))}
+                </div>
+              </div>
+            )}
+            <Link href="/purchase-orders" className="mt-4 inline-block text-sm font-medium text-blue-600 hover:underline">
+              Purchase orders →
+            </Link>
           </Card>
         </div>
       </div>

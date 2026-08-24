@@ -53,6 +53,41 @@ function buildAlerts(data: Awaited<ReturnType<typeof getDashboardData>>) {
       href: "/break-even",
     });
   }
+  if (data.enquiriesNeedingFollowUp > 0) {
+    alerts.push({
+      severity: "orange",
+      message: `${data.enquiriesNeedingFollowUp} enquir${data.enquiriesNeedingFollowUp > 1 ? "ies" : "y"} due for follow-up.`,
+      href: "/enquiries",
+    });
+  }
+  if (data.stalledQuotes > 0) {
+    alerts.push({
+      severity: "orange",
+      message: `${data.stalledQuotes} quote${data.stalledQuotes > 1 ? "s" : ""} still in draft more than 2 days after creation.`,
+      href: "/quotes",
+    });
+  }
+  if (data.posAwaitingApproval > 0) {
+    alerts.push({
+      severity: "orange",
+      message: `${data.posAwaitingApproval} purchase order${data.posAwaitingApproval > 1 ? "s" : ""} waiting on approval.`,
+      href: "/purchase-orders",
+    });
+  }
+  if (data.variationsAwaitingApproval > 0) {
+    alerts.push({
+      severity: "orange",
+      message: `${data.variationsAwaitingApproval} variation${data.variationsAwaitingApproval > 1 ? "s" : ""} awaiting a decision.`,
+      href: "/jobs",
+    });
+  }
+  if (data.assetsOverdue > 0) {
+    alerts.push({
+      severity: "red",
+      message: `${data.assetsOverdue} customer asset${data.assetsOverdue > 1 ? "s are" : " is"} overdue for service.`,
+      href: "/assets",
+    });
+  }
 
   return alerts;
 }
