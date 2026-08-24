@@ -13,38 +13,75 @@ It keeps three things deliberately separate throughout, per the product's core p
 A profitable job can still cause a cash crisis while it's underway — the app is built so those
 two concepts are never confused.
 
-## What's included (V1 / MVP scope)
+## What's included
 
-- **Dashboard** — business running costs, labour utilisation, job profitability and cash position
-  in one screen, with traffic-light alerts. Doubles as the "Monday morning" view of the business.
-- **Employees** — true weekly cost (gross wage + super + on-costs) and true cost per billable hour.
-- **Weekly payroll** — actual hours per employee per week, auto-calculating wages/super/on-costs.
+A full job-management system in the spirit of Fergus, built around the core principle that
+**Cost, Profit and Cash must never be confused**:
+
+- **Dashboard** — business running costs, labour utilisation, job profitability, sales pipeline and
+  cash position in one screen, with traffic-light alerts pulled from every module below. Doubles as
+  the "Monday morning" view of the business.
+- **Customers & Sites** — customer records with contacts, billing details and payment terms; each
+  customer can have multiple sites (site ≠ billing address), each with access notes and hazards.
+- **Assets & recurring jobs** — customer equipment (switchboards, RCDs, emergency lights, etc.) with
+  service intervals and due dates, and recurring job templates with a manual "generate job now" action.
+- **Enquiries** — a sales-pipeline status board (New → Ready to quote → Converted/Lost) with one-click
+  convert-to-job.
+- **Quotes** — saved, versioned, line-itemised quotes (sections, cost/sell per line, draft → sent →
+  accepted/declined) distinct from the quick **Quote calculator**, which prices a job on the spot from
+  the current break-even labour rate at 10/15/20/25/30% or a custom margin.
+- **Jobs** — the central record: budget vs actual, forecast final cost/profit/margin (actual +
+  committed + remaining-budget estimate — a standard earned-value approach), percentage-complete/WIP,
+  job cash position, invoices & payments, sortable by margin.
+- **Job Phases** — break a job into stages, each with its own budget vs actual roll-up.
+- **Variations** — scope changes priced cost-plus-markup, tracked pending/approved/declined; only
+  APPROVED variations ever affect a job's contract value or budget, and the original quote is never
+  altered.
+- **Suppliers & Purchase Orders** — POs carry committed cost against a job (or phase) before the bill
+  arrives; recording a supplier invoice against a PO posts a matching actual cost automatically.
+- **Invoicing** — deposit/progress/final/variation/retention invoices; charge-up jobs can pull their
+  unbilled actual costs onto an invoice with a markup; a progress-claim summary (revised contract,
+  claimed to date, remaining, retention held) appears on jobs with a retention percentage set.
+- **Scheduling** — a weekly dispatch board (employee × day) for quote visits, work, shutdowns,
+  inspections etc., linked to a job/phase and employee.
+- **Forms & Certificates** — a form builder (text/number/date/yes-no/dropdown/signature fields) that
+  doubles as certificates when flagged; fill any active template out against a job.
+- **Employees & Payroll** — true weekly cost (gross wage + super + on-costs) and true cost per
+  billable hour; a weekly payroll screen auto-calculating wages/super/on-costs from actual hours.
 - **Overheads register** — every expense category from the spec, converted to weekly/monthly/annual
-  equivalents regardless of how it's billed. This is the *planned/recurring* model used to work out
-  the break-even rate (insurance, rego, subscriptions, etc.).
-- **Expenses** — actual, dated general-business spend (not tied to a job) that feeds straight into
-  the management P&L, separate from the planned overheads register above.
-- **Break-even calculator** — total weekly running cost ÷ billable hours = break-even rate, plus a
-  target-margin calculator (margin, not markup).
-- **Quote calculator** — direct job cost at the current break-even labour rate, quoted at 10/15/20/25/30%
-  or a custom margin, with a one-click "create job from this quote".
-- **Jobs** — budget vs actual, forecast final cost/profit/margin, percentage-complete/WIP, job cash
-  position, invoices & payments, sortable by margin.
+  equivalents. This is the *planned/recurring* model used for the break-even rate.
+- **Expenses** — actual, dated general-business spend that feeds the management P&L, separate from
+  the planned overheads register above.
+- **Break-even calculator** — total weekly running cost ÷ billable hours, plus a target-margin
+  calculator (margin, not markup — the two are never the same number).
 - **13/52-week cashflow forecast** — recurring payroll/super/overheads roll forward automatically,
   plus one-off items and expected invoice collections, with negative weeks flagged.
-- **Reports** — job profitability ranking, a simplified management P&L, and employee productivity.
+- **Reports** — job profitability ranking, a simplified management P&L, employee productivity, sales
+  pipeline conversion, and purchasing/supplier spend.
+- **Budget vs actual** — a monthly comparison per overhead category (plus wages/super) reusing the
+  Overheads register as the budget and recorded Expenses/payroll as the actual — nothing to enter twice.
+- **Audit trail** — status changes, invoices, payments, variation and PO decisions, and job creation
+  all log to a per-job timeline.
 - **Settings** — target margin, target utilisation and the current bank balance (the cashflow
   forecast's starting point).
 
-### Deliberately out of scope for V1
+### Deliberately out of scope
 
-Per the spec's own "minimum viable version" guidance, the following are real, useful, and meant to
-follow once the core calculations above are proven out — not because they're unimportant:
+A few things genuinely can't be built here, or are significant enough to need an explicit decision
+first rather than being silently built in:
 
-- Xero / job-management / bank-feed / fuel-card integrations.
-- User permissions & role-based access (currently single-user).
-- Monthly budget-vs-actual variance reporting for overhead categories.
-- A dedicated Monday dashboard — the main dashboard already answers all seven of its questions.
+- **Xero / accounting integration** — needs your own Xero developer API credentials.
+- **A native mobile app** — every screen here is mobile-responsive and works from a phone browser
+  instead, but a true offline-capable native app is a separate build.
+- **Real notification delivery (email/SMS)** — needs SMTP/Twilio-style credentials. What exists
+  instead is in-app alerts (Dashboard) computed live from current data — overdue follow-ups, stalled
+  quotes, POs/variations awaiting a decision, assets overdue for service, and the original cost/margin/
+  cash alerts.
+- **User permissions & role-based login** — the app is currently single-user with no authentication.
+  Real login (and therefore real role-based access) is a distinct, security-sensitive feature that's
+  worth a deliberate decision on approach rather than bolting on.
+- **Barcode scanning / serialised inventory / warehouse stock** — no hardware integration available;
+  the Assets register covers customer-owned equipment tracking without it.
 
 ## Tech stack
 
@@ -81,8 +118,9 @@ npm run build                # production build + typecheck
 
 ### Loading demo data instead
 
-If you'd rather explore the app with realistic sample data first (employees, jobs at every stage,
-invoices, an overdue payment, payroll history), run:
+If you'd rather explore the app with realistic sample data first (customers & sites, employees,
+jobs at every stage with phases/variations/POs, invoices, an overdue payment, payroll history,
+enquiries, form templates, assets and a recurring job template), run:
 
 ```bash
 npm run db:seed
