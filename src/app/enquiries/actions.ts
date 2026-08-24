@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { logAudit } from "@/lib/audit";
 
 function str(formData: FormData, key: string): string | null {
   const v = String(formData.get(key) ?? "").trim();
@@ -100,6 +101,7 @@ export async function convertEnquiryToJob(id: number) {
   }
 
   await prisma.enquiry.update({ where: { id }, data: { status: "CONVERTED" } });
+  await logAudit("Job", job.id, "JOB_CREATED", `Created from enquiry: ${enquiry.workRequested}`);
 
   revalidatePath("/enquiries");
   revalidatePath("/jobs");

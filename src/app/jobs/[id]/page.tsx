@@ -56,9 +56,10 @@ function BudgetRow({ label, budget, actual }: { label: string; budget: number; a
 export default async function JobDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const jobId = Number(id);
-  const [detail, formTemplates] = await Promise.all([
+  const [detail, formTemplates, auditLog] = await Promise.all([
     getJobDetail(jobId),
     prisma.formTemplate.findMany({ where: { active: true }, orderBy: { name: "asc" } }),
+    prisma.auditLog.findMany({ where: { entityType: "Job", entityId: jobId }, orderBy: { createdAt: "desc" }, take: 25 }),
   ]);
   if (!detail) notFound();
   const { job, financials } = detail;
@@ -402,6 +403,19 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
                   </div>
                 );
               })()}
+            </Card>
+          )}
+
+          {auditLog.length > 0 && (
+            <Card title="Audit trail">
+              <ul className="space-y-2 text-xs">
+                {auditLog.map((entry) => (
+                  <li key={entry.id} className="border-b border-slate-50 pb-2 last:border-0 last:pb-0 dark:border-slate-800/60">
+                    <div className="text-slate-700 dark:text-slate-300">{entry.summary}</div>
+                    <div className="text-slate-400">{formatDate(entry.createdAt)}</div>
+                  </li>
+                ))}
+              </ul>
             </Card>
           )}
         </div>

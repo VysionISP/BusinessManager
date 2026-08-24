@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { logAudit } from "@/lib/audit";
 
 function str(formData: FormData, key: string): string | null {
   const v = String(formData.get(key) ?? "").trim();
@@ -80,13 +81,15 @@ export async function deletePoLine(poId: number, jobId: number, lineId: number) 
 }
 
 export async function setPoStatus(poId: number, jobId: number, formData: FormData) {
-  await prisma.purchaseOrder.update({
+  const status = str(formData, "status") ?? "DRAFT";
+  const po = await prisma.purchaseOrder.update({
     where: { id: poId },
     data: {
-      status: str(formData, "status") ?? "DRAFT",
+      status,
       approvedBy: str(formData, "approvedBy") ?? undefined,
     },
   });
+  await logAudit("Job", jobId, "PO_STATUS_CHANGE", `Purchase order ${po.poNumber} → ${status}`);
   revalidatePath(`/purchase-orders/${poId}`);
   revalidatePath("/purchase-orders");
   revalidatePath(`/jobs/${jobId}`);

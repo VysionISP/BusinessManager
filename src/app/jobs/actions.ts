@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { logAudit } from "@/lib/audit";
+import { formatCurrency } from "@/lib/format";
 
 function num(formData: FormData, key: string, fallback = 0): number {
   const raw = formData.get(key);
@@ -63,10 +65,13 @@ export async function updateJob(id: number, formData: FormData) {
 }
 
 export async function updateJobProgress(id: number, formData: FormData) {
-  await prisma.job.update({
-    where: { id },
-    data: { status: str(formData, "status"), percentComplete: num(formData, "percentComplete") },
-  });
+  const before = await prisma.job.findUnique({ where: { id }, select: { status: true, percentComplete: true } });
+  const status = str(formData, "status");
+  const percentComplete = num(formData, "percentComplete");
+  await prisma.job.update({ where: { id }, data: { status, percentComplete } });
+  if (before && (before.status !== status || before.percentComplete !== percentComplete)) {
+    await logAudit("Job", id, "STATUS_CHANGE", `Status ${before.status} → ${status}, ${before.percentComplete}% → ${percentComplete}% complete`);
+  }
   revalidatePath("/jobs");
   revalidatePath(`/jobs/${id}`);
   revalidatePath("/");
@@ -105,16 +110,19 @@ export async function deleteCostEntry(jobId: number, entryId: number) {
 }
 
 export async function addInvoice(jobId: number, formData: FormData) {
+  const invoiceNumber = str(formData, "invoiceNumber");
+  const amount = num(formData, "amount");
   await prisma.invoice.create({
     data: {
       jobId,
-      invoiceNumber: str(formData, "invoiceNumber"),
+      invoiceNumber,
       type: str(formData, "type") || "PROGRESS",
       issueDate: dateOrNull(formData, "issueDate") ?? new Date(),
       dueDate: dateOrNull(formData, "dueDate") ?? new Date(),
-      amount: num(formData, "amount"),
+      amount,
     },
   });
+  await logAudit("Job", jobId, "INVOICE_CREATED", `Invoice ${invoiceNumber} raised for ${formatCurrency(amount)}`);
   revalidatePath(`/jobs/${jobId}`);
   revalidatePath("/jobs");
   revalidatePath("/");
@@ -128,13 +136,15 @@ export async function deleteInvoice(jobId: number, invoiceId: number) {
 }
 
 export async function addPayment(jobId: number, invoiceId: number, formData: FormData) {
+  const amount = num(formData, "amount");
   await prisma.payment.create({
     data: {
       invoiceId,
       date: dateOrNull(formData, "date") ?? new Date(),
-      amount: num(formData, "amount"),
+      amount,
     },
   });
+  await logAudit("Job", jobId, "PAYMENT_RECORDED", `Payment of ${formatCurrency(amount)} received`);
   revalidatePath(`/jobs/${jobId}`);
   revalidatePath("/jobs");
   revalidatePath("/");
@@ -227,7 +237,7 @@ export async function addVariation(jobId: number, formData: FormData) {
 
 export async function setVariationStatus(jobId: number, variationId: number, formData: FormData) {
   const status = str(formData, "status") || "PENDING";
-  await prisma.variation.update({
+  const variation = await prisma.variation.update({
     where: { id: variationId },
     data: {
       status,
@@ -235,6 +245,7 @@ export async function setVariationStatus(jobId: number, variationId: number, for
       approvedDate: status === "APPROVED" ? new Date() : null,
     },
   });
+  await logAudit("Job", jobId, "VARIATION_STATUS_CHANGE", `Variation ${variation.variationNumber} (${variation.title}) → ${status}`);
   revalidatePath(`/jobs/${jobId}`);
   revalidatePath("/jobs");
   revalidatePath("/");

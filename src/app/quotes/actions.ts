@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { logAudit } from "@/lib/audit";
 
 function str(formData: FormData, key: string): string | null {
   const v = String(formData.get(key) ?? "").trim();
@@ -72,7 +73,8 @@ export async function setQuoteStatus(id: number, formData: FormData) {
     data.acceptedByName = str(formData, "acceptedByName");
     data.acceptedDate = new Date();
   }
-  await prisma.quote.update({ where: { id }, data });
+  const quote = await prisma.quote.update({ where: { id }, data });
+  await logAudit("Quote", id, "STATUS_CHANGE", `${quote.quoteNumber} → ${status}`);
   revalidatePath(`/quotes/${id}`);
   revalidatePath("/quotes");
 }
@@ -169,6 +171,7 @@ export async function convertQuoteToJob(id: number) {
   }
 
   await prisma.quote.update({ where: { id }, data: { jobId: job.id } });
+  await logAudit("Job", job.id, "JOB_CREATED", `Created from accepted quote ${quote.quoteNumber}`);
 
   revalidatePath(`/quotes/${id}`);
   revalidatePath("/jobs");
