@@ -25,14 +25,32 @@ function mondayOfWeek(offsetWeeks: number): Date {
 async function main() {
   console.log("Seeding database...");
 
+  await prisma.formSubmission.deleteMany();
+  await prisma.formTemplate.deleteMany();
+  await prisma.scheduleEvent.deleteMany();
   await prisma.payment.deleteMany();
   await prisma.invoice.deleteMany();
+  await prisma.supplierInvoice.deleteMany();
+  await prisma.purchaseOrderLine.deleteMany();
+  await prisma.purchaseOrder.deleteMany();
+  await prisma.supplier.deleteMany();
+  await prisma.variation.deleteMany();
   await prisma.jobCostEntry.deleteMany();
+  await prisma.jobPhase.deleteMany();
+  await prisma.quoteLine.deleteMany();
+  await prisma.quote.deleteMany();
   await prisma.job.deleteMany();
+  await prisma.enquiry.deleteMany();
+  await prisma.asset.deleteMany();
+  await prisma.recurringJobTemplate.deleteMany();
+  await prisma.site.deleteMany();
+  await prisma.customer.deleteMany();
   await prisma.payrollEntry.deleteMany();
   await prisma.employee.deleteMany();
   await prisma.overheadExpense.deleteMany();
+  await prisma.expense.deleteMany();
   await prisma.cashflowAdjustment.deleteMany();
+  await prisma.auditLog.deleteMany();
   await prisma.settings.deleteMany();
 
   await prisma.settings.create({
@@ -166,12 +184,7 @@ async function main() {
 
   console.log("Employees & payroll history seeded.");
 
-  const overheads: {
-    category: string;
-    name: string;
-    amount: number;
-    frequency: string;
-  }[] = [
+  const overheads: { category: string; name: string; amount: number; frequency: string }[] = [
     { category: "INSURANCE", name: "Business & Public Liability Insurance", amount: 2100, frequency: "QUARTERLY" },
     { category: "INSURANCE", name: "Professional Indemnity Insurance", amount: 1450, frequency: "ANNUAL" },
     { category: "INSURANCE", name: "WorkCover", amount: 9800, frequency: "ANNUAL" },
@@ -203,7 +216,70 @@ async function main() {
     await prisma.overheadExpense.create({ data: o });
   }
 
-  console.log("Overheads seeded.");
+  await prisma.expense.createMany({
+    data: [
+      { date: daysAgo(18), category: "TOOLS_EQUIPMENT", description: "Replacement drill set", amount: 420 },
+      { date: daysAgo(12), category: "VEHICLES", description: "Extra fuel — Sunridge site visits", amount: 180 },
+      { date: daysAgo(5), category: "ADMINISTRATION", description: "Courier — urgent parts delivery", amount: 65 },
+    ],
+  });
+
+  console.log("Overheads & expenses seeded.");
+
+  // ---------------------------------------------------------------------
+  // Customers & sites
+  // ---------------------------------------------------------------------
+
+  const meadowbankCustomer = await prisma.customer.create({
+    data: { name: "Meadowbank Shopping Centre", customerType: "COMMERCIAL", mainContactName: "Centre Management", mainContactPhone: "03 5555 0101", paymentTermsDays: 30 },
+  });
+  const meadowbankSite = await prisma.site.create({
+    data: { customerId: meadowbankCustomer.id, name: "Meadowbank Shopping Centre", address: "88 Centre Rd, Cranbourne VIC", accessInstructions: "Loading dock, sign in at centre management office", hoursNotes: "Trading hours 9am-6pm, after-hours access via security" },
+  });
+
+  const nguyenCustomer = await prisma.customer.create({
+    data: { name: "Nguyen Residence", customerType: "RESIDENTIAL", mainContactName: "Minh Nguyen", mainContactPhone: "0412 345 678", mainContactEmail: "minh.nguyen@example.com" },
+  });
+  const nguyenSite = await prisma.site.create({
+    data: { customerId: nguyenCustomer.id, name: "Nguyen Residence", address: "14 Wattle St, Berwick VIC" },
+  });
+
+  const harborviewCustomer = await prisma.customer.create({
+    data: { name: "Harborview Cafe", customerType: "COMMERCIAL", mainContactName: "Elena Harbord", mainContactPhone: "0423 111 222" },
+  });
+  const harborviewSite = await prisma.site.create({
+    data: { customerId: harborviewCustomer.id, name: "Harborview Cafe", address: "3/22 Esplanade, Frankston VIC", accessInstructions: "Deliveries via rear laneway" },
+  });
+
+  const sunridgeCustomer = await prisma.customer.create({
+    data: { name: "Sunridge Aged Care", customerType: "COMMERCIAL", mainContactName: "Facilities Manager", mainContactPhone: "03 5555 0199", paymentTermsDays: 30 },
+  });
+  const sunridgeSite = await prisma.site.create({
+    data: {
+      customerId: sunridgeCustomer.id,
+      name: "Sunridge Aged Care",
+      address: "120 Ridge Rd, Pakenham VIC",
+      accessInstructions: "Sign in at reception, induction required for all trades",
+      hazardsNotes: "Live residents on site — noise restrictions 10am-4pm",
+    },
+  });
+
+  const franklinCustomer = await prisma.customer.create({
+    data: { name: "Franklin Street Body Corporate", customerType: "PROPERTY_MANAGER", mainContactName: "Strata Manager", paymentTermsDays: 30 },
+  });
+  const franklinSite = await prisma.site.create({
+    data: { customerId: franklinCustomer.id, name: "Franklin Street Units", address: "5 Franklin St, Dandenong VIC" },
+  });
+
+  const bayviewCustomer = await prisma.customer.create({
+    data: { name: "Bayview Retail Group", customerType: "COMMERCIAL", mainContactName: "Leasing Manager" },
+  });
+
+  const oldMillCustomer = await prisma.customer.create({
+    data: { name: "Old Mill Estate Developments", customerType: "BUILDER", mainContactName: "Site Supervisor" },
+  });
+
+  console.log("Customers & sites seeded.");
 
   // ---------------------------------------------------------------------
   // Jobs — deliberately span the full status range and include a job
@@ -214,7 +290,8 @@ async function main() {
   const meadowbank = await prisma.job.create({
     data: {
       jobNumber: "J-2025-041",
-      customerName: "Meadowbank Shopping Centre",
+      customerId: meadowbankCustomer.id,
+      siteId: meadowbankSite.id,
       description: "Tenancy fit-out electrical — 4 shopfronts",
       status: "INVOICED",
       quoteDate: daysAgo(70),
@@ -254,7 +331,8 @@ async function main() {
   const nguyen = await prisma.job.create({
     data: {
       jobNumber: "J-2025-118",
-      customerName: "Nguyen Residence",
+      customerId: nguyenCustomer.id,
+      siteId: nguyenSite.id,
       description: "Full home rewire, switchboard upgrade",
       status: "IN_PROGRESS",
       quoteDate: daysAgo(30),
@@ -282,11 +360,29 @@ async function main() {
     data: { jobId: nguyen.id, invoiceNumber: "INV-1071", type: "DEPOSIT", issueDate: daysAgo(28), dueDate: daysAgo(14), amount: 5000 },
   });
   await prisma.payment.create({ data: { invoiceId: nguyenDeposit.id, date: daysAgo(20), amount: 5000 } });
+  await prisma.variation.create({
+    data: {
+      jobId: nguyen.id,
+      variationNumber: "V-1",
+      title: "Additional power circuit — home office",
+      scope: "Customer requested an additional double GPO circuit to the new home office after rough-in was complete.",
+      reason: "Customer request",
+      requestedBy: "Minh Nguyen",
+      requestDate: daysAgo(10),
+      labourAllowance: 350,
+      materialAllowance: 120,
+      markupPercent: 20,
+      status: "APPROVED",
+      customerApproved: true,
+      approvedDate: daysAgo(9),
+    },
+  });
 
-  await prisma.job.create({
+  const harborview = await prisma.job.create({
     data: {
       jobNumber: "J-2025-122",
-      customerName: "Harborview Cafe Fitout",
+      customerId: harborviewCustomer.id,
+      siteId: harborviewSite.id,
       description: "Commercial kitchen & shopfront electrical fitout",
       status: "APPROVED",
       quoteDate: daysAgo(10),
@@ -305,7 +401,8 @@ async function main() {
   const sunridge = await prisma.job.create({
     data: {
       jobNumber: "J-2025-095",
-      customerName: "Sunridge Aged Care",
+      customerId: sunridgeCustomer.id,
+      siteId: sunridgeSite.id,
       description: "Main switchboard upgrade & emergency lighting compliance",
       status: "IN_PROGRESS",
       quoteDate: daysAgo(55),
@@ -318,14 +415,46 @@ async function main() {
       budgetSubcontractors: 4000,
       budgetOtherDirectCosts: 800,
       percentComplete: 80,
+      projectManagerId: dave.id,
     },
   });
+
+  const switchboardPhase = await prisma.jobPhase.create({
+    data: {
+      jobId: sunridge.id,
+      name: "Phase A — Switchboard replacement",
+      description: "Removal of old main switchboard and install of new distribution board",
+      sortOrder: 0,
+      status: "COMPLETE",
+      budgetLabourHours: 210,
+      budgetLabourCost: 15600,
+      budgetMaterials: 14000,
+      budgetSubcontractors: 3600,
+      percentComplete: 100,
+    },
+  });
+  const emergencyLightingPhase = await prisma.jobPhase.create({
+    data: {
+      jobId: sunridge.id,
+      name: "Phase B — Emergency lighting compliance",
+      description: "Testing and replacement of non-compliant emergency light fittings",
+      sortOrder: 1,
+      status: "IN_PROGRESS",
+      budgetLabourHours: 110,
+      budgetLabourCost: 7400,
+      budgetMaterials: 5500,
+      budgetSubcontractors: 400,
+      percentComplete: 60,
+    },
+  });
+
   await prisma.jobCostEntry.createMany({
     data: [
-      { jobId: sunridge.id, date: daysAgo(35), category: "LABOUR", description: "Switchboard removal & install, weeks 1-3", hours: 210, amount: 15600 },
-      { jobId: sunridge.id, date: daysAgo(8), category: "LABOUR", description: "Emergency lighting compliance, week 4", hours: 48, amount: 3550 },
-      { jobId: sunridge.id, date: daysAgo(30), category: "MATERIALS", description: "Switchboard, breakers, emergency light fittings", amount: 18200 },
-      { jobId: sunridge.id, date: daysAgo(20), category: "SUBCONTRACTOR", description: "Crane hire & rigging contractor", amount: 3600 },
+      { jobId: sunridge.id, phaseId: switchboardPhase.id, date: daysAgo(35), category: "LABOUR", description: "Switchboard removal & install, weeks 1-3", hours: 210, amount: 15600 },
+      { jobId: sunridge.id, phaseId: emergencyLightingPhase.id, date: daysAgo(8), category: "LABOUR", description: "Emergency lighting compliance, week 4", hours: 48, amount: 3550 },
+      { jobId: sunridge.id, phaseId: switchboardPhase.id, date: daysAgo(30), category: "MATERIALS", description: "Switchboard, breakers", amount: 14200 },
+      { jobId: sunridge.id, phaseId: emergencyLightingPhase.id, date: daysAgo(9), category: "MATERIALS", description: "Emergency light fittings", amount: 4000 },
+      { jobId: sunridge.id, phaseId: switchboardPhase.id, date: daysAgo(20), category: "SUBCONTRACTOR", description: "Crane hire & rigging contractor", amount: 3600 },
       { jobId: sunridge.id, date: daysAgo(10), category: "OTHER", description: "Site induction & compliance fees", amount: 650 },
     ],
   });
@@ -342,7 +471,8 @@ async function main() {
   const franklin = await prisma.job.create({
     data: {
       jobNumber: "J-2025-101",
-      customerName: "Franklin Street Units",
+      customerId: franklinCustomer.id,
+      siteId: franklinSite.id,
       description: "Common area lighting & power upgrade",
       status: "PAID",
       quoteDate: daysAgo(90),
@@ -372,7 +502,7 @@ async function main() {
   await prisma.job.create({
     data: {
       jobNumber: "J-2025-140",
-      customerName: "Bayview Retail",
+      customerId: bayviewCustomer.id,
       description: "Structured data cabling — 6 tenancies",
       status: "QUOTED",
       quoteDate: daysAgo(3),
@@ -389,7 +519,7 @@ async function main() {
   await prisma.job.create({
     data: {
       jobNumber: "J-2025-070",
-      customerName: "Old Mill Estate",
+      customerId: oldMillCustomer.id,
       description: "Sub-division reticulation — lost to competitor",
       status: "LOST",
       quoteDate: daysAgo(45),
@@ -403,7 +533,94 @@ async function main() {
     },
   });
 
-  console.log("Jobs, costs, invoices & payments seeded.");
+  console.log("Jobs, phases, costs, invoices, payments & a variation seeded.");
+
+  // ---------------------------------------------------------------------
+  // Suppliers & purchasing — one open PO (committed cost) and one closed
+  // PO with a matching supplier invoice (actual cost), so the difference
+  // between committed and actual is visible on a real job.
+  // ---------------------------------------------------------------------
+
+  const cableSupplier = await prisma.supplier.create({
+    data: { name: "Southern Cable & Switchgear", contactName: "Accounts", phone: "03 5555 0300", paymentTermsDays: 30 },
+  });
+  const hireSupplier = await prisma.supplier.create({
+    data: { name: "Metro Equipment Hire", contactName: "Bookings", phone: "03 5555 0450", paymentTermsDays: 14 },
+  });
+
+  const openPo = await prisma.purchaseOrder.create({
+    data: {
+      poNumber: "PO-2025-014",
+      supplierId: hireSupplier.id,
+      jobId: harborview.id,
+      status: "SENT",
+      requestedBy: "Dave Mitchell",
+      requiredDate: daysFromNow(5),
+      lines: { create: [{ description: "Scissor lift hire — 2 weeks", quantity: 1, unitCost: 950 }] },
+    },
+  });
+
+  const closedPo = await prisma.purchaseOrder.create({
+    data: {
+      poNumber: "PO-2025-009",
+      supplierId: cableSupplier.id,
+      jobId: sunridge.id,
+      phaseId: switchboardPhase.id,
+      status: "CLOSED",
+      requestedBy: "Dave Mitchell",
+      approvedBy: "Grace Whelan",
+      lines: { create: [{ description: "Main switchboard & breakers", quantity: 1, unitCost: 14200 }] },
+    },
+  });
+
+  await prisma.supplierInvoice.create({
+    data: {
+      supplierId: cableSupplier.id,
+      purchaseOrderId: closedPo.id,
+      jobId: sunridge.id,
+      phaseId: switchboardPhase.id,
+      invoiceNumber: "SC-88213",
+      category: "MATERIALS",
+      date: daysAgo(31),
+      dueDate: daysAgo(1),
+      amount: 14200,
+      status: "PAID",
+    },
+  });
+
+  console.log(`Suppliers & purchase orders seeded (open PO ${openPo.poNumber}, closed PO ${closedPo.poNumber}).`);
+
+  // ---------------------------------------------------------------------
+  // Sales pipeline — enquiries waiting to be quoted
+  // ---------------------------------------------------------------------
+
+  await prisma.enquiry.createMany({
+    data: [
+      {
+        customerId: bayviewCustomer.id,
+        workRequested: "LED upgrade for 3 additional tenancies",
+        source: "Repeat customer",
+        urgency: "NORMAL",
+        status: "READY_TO_QUOTE",
+        estimatedValue: 6500,
+        assignedTo: "Dave Mitchell",
+        followUpDate: daysFromNow(3),
+      },
+    ],
+  });
+  await prisma.enquiry.create({
+    data: {
+      contactName: "Priya Shah",
+      contactPhone: "0433 222 111",
+      workRequested: "Switchboard safety inspection before house sale",
+      source: "Google",
+      urgency: "HIGH",
+      status: "NEW",
+      followUpDate: daysFromNow(1),
+    },
+  });
+
+  console.log("Enquiries seeded.");
 
   await prisma.cashflowAdjustment.createMany({
     data: [

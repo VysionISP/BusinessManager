@@ -6,10 +6,11 @@ import { Button, FormField } from "@/components/FormField";
 import { JobStatusBadge, TrafficBadge } from "@/components/Badge";
 import { formatCurrency, formatDate, formatPercent } from "@/lib/format";
 import { getJobDetail } from "@/lib/queries";
-import { JOB_STATUSES, JOB_STATUS_LABELS } from "@/lib/types";
+import { JOB_STATUSES, JOB_STATUS_LABELS, PRICING_METHOD_LABELS } from "@/lib/types";
 import { CostEntryForm } from "./CostEntryForm";
 import { InvoiceForm } from "./InvoiceForm";
 import { InvoiceRow } from "./InvoiceRow";
+import { PhaseList } from "./PhaseList";
 import {
   addCostEntry,
   addInvoice,
@@ -62,7 +63,7 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
   return (
     <div>
       <PageHeader
-        title={`${job.jobNumber} — ${job.customerName}`}
+        title={`${job.jobNumber} — ${job.customer.name}`}
         description={job.description}
         actions={
           <div className="flex items-center gap-2">
@@ -78,6 +79,24 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
       />
 
       <div className="mb-5 grid grid-cols-2 gap-3 text-xs text-slate-500 dark:text-slate-400 sm:grid-cols-4">
+        <div>
+          Customer{" "}
+          <div className="text-sm font-medium text-slate-800 dark:text-slate-200">
+            <Link href={`/customers/${job.customerId}`} className="hover:underline">
+              {job.customer.name}
+            </Link>
+          </div>
+        </div>
+        <div>
+          Site <div className="text-sm font-medium text-slate-800 dark:text-slate-200">{job.site?.name ?? "—"}</div>
+        </div>
+        <div>
+          Project manager <div className="text-sm font-medium text-slate-800 dark:text-slate-200">{job.projectManager?.name ?? "Unassigned"}</div>
+        </div>
+        <div>
+          Pricing method{" "}
+          <div className="text-sm font-medium text-slate-800 dark:text-slate-200">{PRICING_METHOD_LABELS[job.pricingMethod as keyof typeof PRICING_METHOD_LABELS] ?? job.pricingMethod}</div>
+        </div>
         <div>
           Quote date <div className="text-sm font-medium text-slate-800 dark:text-slate-200">{formatDate(job.quoteDate)}</div>
         </div>
@@ -117,11 +136,15 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
               {financials.overBudgetLabourHours && <span className="ml-2 font-medium text-rose-600">over budget</span>}
             </div>
 
-            <div className="mt-5 grid grid-cols-2 gap-4 border-t border-slate-100 pt-4 dark:border-slate-800 sm:grid-cols-4">
+            <div className="mt-5 grid grid-cols-2 gap-4 border-t border-slate-100 pt-4 dark:border-slate-800 sm:grid-cols-5">
               <div>
                 <div className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Expected profit</div>
                 <div className="font-semibold">{formatCurrency(financials.expectedProfit)}</div>
                 <div className="text-xs text-slate-400">{formatPercent(financials.expectedMarginPercent, 1)} margin</div>
+              </div>
+              <div>
+                <div className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Committed (open POs)</div>
+                <div className="font-semibold">{formatCurrency(financials.forecast.committedCost)}</div>
               </div>
               <div>
                 <div className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Forecast final cost</div>
@@ -138,9 +161,13 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
             </div>
           </Card>
 
+          <Card title="Job phases">
+            <PhaseList jobId={jobId} phases={job.phases} costEntries={job.costEntries} />
+          </Card>
+
           <Card title="Actual costs">
             <div className="mb-4">
-              <CostEntryForm action={boundAddCostEntry} />
+              <CostEntryForm action={boundAddCostEntry} phases={job.phases} />
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
@@ -222,7 +249,11 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
 
           <Card title="Work in progress (management estimate)">
             <div className="space-y-2 text-sm">
-              <Row label="Contract value" value={formatCurrency(financials.wip.contractValue)} />
+              <Row label="Original quote" value={formatCurrency(financials.originalQuoteAmount)} />
+              {financials.approvedVariationsTotal !== 0 && (
+                <Row label="Approved variations" value={formatCurrency(financials.approvedVariationsTotal)} />
+              )}
+              <Row label="Contract value" value={formatCurrency(financials.wip.contractValue)} bold={financials.approvedVariationsTotal !== 0} />
               <Row label={`Earned value (${job.percentComplete}% complete)`} value={formatCurrency(financials.wip.earnedValue)} />
               <Row label="Total invoiced" value={formatCurrency(financials.wip.totalInvoiced)} />
               <div className="my-2 border-t border-slate-100 dark:border-slate-800" />

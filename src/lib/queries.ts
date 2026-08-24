@@ -1,12 +1,11 @@
 import { prisma } from "./db";
-import {
-  ACTIVE_JOB_STATUSES,
-} from "./types";
+import { ACTIVE_JOB_STATUSES, OPEN_PO_STATUSES } from "./types";
 import {
   type AlertSeverity,
   type JobFinancials,
   breakEvenHourlyRate,
   businessRunningCosts,
+  committedCost,
   computeJobFinancials,
   employeeTrueCost,
   labourStats,
@@ -35,49 +34,97 @@ export async function getOverheads(activeOnly = false) {
   });
 }
 
-async function getAllJobFinancials(): Promise<JobFinancials[]> {
-  const [jobs, settings] = await Promise.all([
-    prisma.job.findMany({
-      include: { costEntries: true, invoices: { include: { payments: true } } },
-      orderBy: { createdAt: "desc" },
-    }),
-    getSettings(),
-  ]);
+// ---------------------------------------------------------------------------
+// Customers & sites
+// ---------------------------------------------------------------------------
 
-  return jobs.map((job) => {
-    const payments = job.invoices.flatMap((inv) => inv.payments.map((p) => ({ ...p, invoiceId: inv.id })));
-    return computeJobFinancials(job, job.costEntries, job.invoices, payments, settings.targetMarginPercent);
+export async function getCustomers(activeOnly = false) {
+  return prisma.customer.findMany({
+    where: activeOnly ? { active: true } : undefined,
+    include: { sites: true, _count: { select: { jobs: true } } },
+    orderBy: { name: "asc" },
   });
 }
 
-export async function getJobsWithFinancials(): Promise<JobFinancials[]> {
-  return getAllJobFinancials();
+export async function getCustomerDetail(id: number) {
+  const customer = await prisma.customer.findUnique({
+    where: { id },
+    include: {
+      sites: { orderBy: { name: "asc" } },
+      jobs: { orderBy: { createdAt: "desc" } },
+      assets: { orderBy: { nextServiceDate: "asc" } },
+      enquiries: { orderBy: { createdAt: "desc" } },
+    },
+  });
+  return customer;
 }
 
-export async function getJobFinancialsById(id: number): Promise<JobFinancials | null> {
-  const [job, settings] = await Promise.all([
-    prisma.job.findUnique({
-      where: { id },
-      include: { costEntries: { orderBy: { date: "desc" } }, invoices: { include: { payments: true }, orderBy: { issueDate: "desc" } } },
-    }),
-    getSettings(),
-  ]);
-  if (!job) return null;
-  const payments = job.invoices.flatMap((inv) => inv.payments.map((p) => ({ ...p, invoiceId: inv.id })));
-  return computeJobFinancials(job, job.costEntries, job.invoices, payments, settings.targetMarginPercent);
+export async function getSitesForCustomer(customerId: number) {
+  return prisma.site.findMany({ where: { customerId }, orderBy: { name: "asc" } });
+}
+
+export async function getAllSitesWithCustomer() {
+  return prisma.site.findMany({ include: { customer: true }, orderBy: [{ customer: { name: "asc" } }, { name: "asc" }] });
+}
+
+// ---------------------------------------------------------------------------
+// Jobs & financials
+// ---------------------------------------------------------------------------
+
+const jobFinancialsInclude = {
+  customer: true,
+  site: true,
+  phases: { orderBy: { sortOrder: "asc" as const } },
+  costEntries: true,
+  invoices: { include: { payments: true } },
+  variations: true,
+  purchaseOrders: { include: { lines: true } },
+};
+
+async function getAllJobFinancials(): Promise<JobFinancials<Awaited<ReturnType<typeof fetchJobsForFinancials>>[number]>[]> {
+  const [jobs, settings] = await Promise.all([fetchJobsForFinancials(), getSettings()]);
+
+  return jobs.map((job) => {
+    const payments = job.invoices.flatMap((inv) => inv.payments.map((p) => ({ ...p, invoiceId: inv.id })));
+    const committed = committedCost(job.purchaseOrders, OPEN_PO_STATUSES);
+    return computeJobFinancials(job, job.costEntries, job.invoices, payments, job.variations, committed, settings.targetMarginPercent);
+  });
+}
+
+function fetchJobsForFinancials() {
+  return prisma.job.findMany({ include: jobFinancialsInclude, orderBy: { createdAt: "desc" } });
+}
+
+export async function getJobsWithFinancials() {
+  return getAllJobFinancials();
 }
 
 export async function getJobDetail(id: number) {
   const [job, settings] = await Promise.all([
     prisma.job.findUnique({
       where: { id },
-      include: { costEntries: { orderBy: { date: "desc" } }, invoices: { include: { payments: { orderBy: { date: "desc" } } }, orderBy: { issueDate: "desc" } } },
+      include: {
+        customer: true,
+        site: true,
+        projectManager: true,
+        enquiry: true,
+        phases: { orderBy: { sortOrder: "asc" } },
+        costEntries: { orderBy: { date: "desc" }, include: { phase: true } },
+        invoices: { include: { payments: { orderBy: { date: "desc" } } }, orderBy: { issueDate: "desc" } },
+        variations: { orderBy: { createdAt: "desc" } },
+        purchaseOrders: { include: { lines: true, supplier: true }, orderBy: { createdAt: "desc" } },
+        supplierInvoices: { include: { supplier: true }, orderBy: { date: "desc" } },
+        formSubmissions: { include: { formTemplate: true }, orderBy: { submittedAt: "desc" } },
+        scheduleEvents: { include: { employee: true }, orderBy: { startAt: "desc" } },
+        quotes: { orderBy: { createdAt: "desc" } },
+      },
     }),
     getSettings(),
   ]);
   if (!job) return null;
   const payments = job.invoices.flatMap((inv) => inv.payments.map((p) => ({ ...p, invoiceId: inv.id })));
-  const financials = computeJobFinancials(job, job.costEntries, job.invoices, payments, settings.targetMarginPercent);
+  const committed = committedCost(job.purchaseOrders, OPEN_PO_STATUSES);
+  const financials = computeJobFinancials(job, job.costEntries, job.invoices, payments, job.variations, committed, settings.targetMarginPercent);
   return { job, financials };
 }
 
@@ -86,10 +133,10 @@ export interface DashboardData {
   labour: ReturnType<typeof labourStats>;
   breakEvenRate: number;
   targetRate: number;
-  jobs: JobFinancials[];
-  activeJobs: JobFinancials[];
-  jobsOverBudget: JobFinancials[];
-  jobsBelowMargin: JobFinancials[];
+  jobs: Awaited<ReturnType<typeof getAllJobFinancials>>;
+  activeJobs: Awaited<ReturnType<typeof getAllJobFinancials>>;
+  jobsOverBudget: Awaited<ReturnType<typeof getAllJobFinancials>>;
+  jobsBelowMargin: Awaited<ReturnType<typeof getAllJobFinancials>>;
   totalActiveJobValue: number;
   estimatedActiveProfit: number;
   avgActiveMarginPercent: number;
@@ -106,14 +153,18 @@ export interface DashboardData {
   revenueNeededNext4Weeks: number;
   severities: Record<string, AlertSeverity>;
   settings: Awaited<ReturnType<typeof getSettings>>;
+  openEnquiries: number;
+  quotesAwaitingAction: number;
 }
 
 export async function getDashboardData(): Promise<DashboardData> {
-  const [employees, overheads, jobs, settings] = await Promise.all([
+  const [employees, overheads, jobs, settings, openEnquiries, quotesAwaitingAction] = await Promise.all([
     getEmployees(true),
     getOverheads(true),
     getAllJobFinancials(),
     getSettings(),
+    prisma.enquiry.count({ where: { status: { notIn: ["CONVERTED", "LOST", "NO_RESPONSE"] } } }),
+    prisma.quote.count({ where: { status: { in: ["DRAFT", "SENT"] } } }),
   ]);
 
   const runningCosts = businessRunningCosts(employees, overheads);
@@ -125,7 +176,7 @@ export async function getDashboardData(): Promise<DashboardData> {
   const jobsOverBudget = activeJobs.filter((jf) => jf.overBudgetLabourHours || jf.overBudgetMaterials);
   const jobsBelowMargin = activeJobs.filter((jf) => jf.belowTargetMargin);
 
-  const totalActiveJobValue = activeJobs.reduce((sum, jf) => sum + jf.job.quoteAmount, 0);
+  const totalActiveJobValue = activeJobs.reduce((sum, jf) => sum + jf.revisedContractValue, 0);
   const estimatedActiveProfit = activeJobs.reduce((sum, jf) => sum + jf.forecast.forecastProfit, 0);
   const avgActiveMarginPercent = totalActiveJobValue > 0 ? (estimatedActiveProfit / totalActiveJobValue) * 100 : 0;
   const totalWip = activeJobs.reduce((sum, jf) => sum + Math.max(0, jf.wip.managementWip), 0);
@@ -185,6 +236,8 @@ export async function getDashboardData(): Promise<DashboardData> {
     revenueNeededNext4Weeks,
     severities,
     settings,
+    openEnquiries,
+    quotesAwaitingAction,
   };
 }
 
@@ -251,7 +304,7 @@ export async function getCashflowForecast(weeks: number): Promise<CashflowWeek[]
 }
 
 export interface ReportsData {
-  jobs: JobFinancials[];
+  jobs: Awaited<ReturnType<typeof getAllJobFinancials>>;
   profitLoss: {
     revenue: number;
     labour: number;
@@ -288,7 +341,7 @@ export async function getReportsData(): Promise<ReportsData> {
   ]);
 
   const closedOrActive = jobs.filter((jf) => jf.job.status !== "LEAD" && jf.job.status !== "LOST" && jf.job.status !== "QUOTED");
-  const revenue = closedOrActive.reduce((sum, jf) => sum + jf.job.quoteAmount, 0);
+  const revenue = closedOrActive.reduce((sum, jf) => sum + jf.revisedContractValue, 0);
   const labour = closedOrActive.reduce((sum, jf) => sum + jf.actual.labour, 0);
   const materials = closedOrActive.reduce((sum, jf) => sum + jf.actual.materials, 0);
   const subcontractors = closedOrActive.reduce((sum, jf) => sum + jf.actual.subcontractor, 0);

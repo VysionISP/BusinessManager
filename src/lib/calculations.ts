@@ -345,8 +345,20 @@ export interface JobCostEntryLike {
   hours?: number | null;
 }
 
+export interface BudgetCostLike {
+  budgetLabourCost: number;
+  budgetMaterials: number;
+  budgetSubcontractors: number;
+  budgetOtherDirectCosts: number;
+}
+
+/** Sum of the four direct-cost budget lines — used for both jobs and phases (phases have no quote/% complete of their own). */
+export function budgetCostTotal(b: BudgetCostLike): number {
+  return b.budgetLabourCost + b.budgetMaterials + b.budgetSubcontractors + b.budgetOtherDirectCosts;
+}
+
 export function jobBudgetTotal(job: JobBudgetLike): number {
-  return job.budgetLabourCost + job.budgetMaterials + job.budgetSubcontractors + job.budgetOtherDirectCosts;
+  return budgetCostTotal(job);
 }
 
 export function jobExpectedProfit(job: JobBudgetLike): number {
@@ -402,23 +414,30 @@ export function actualCostsByCategory(entries: JobCostEntryLike[]): ActualCostsB
 
 export interface JobForecast {
   actualTotalCost: number;
+  committedCost: number;
   forecastFinalCost: number;
   forecastProfit: number;
   forecastMarginPercent: number;
 }
 
 /**
- * Forecasts the final cost of a job by extrapolating actual cost-to-date at
- * the current run rate implied by percentage complete. Before any progress
- * is recorded, the original budget is the best available estimate.
+ * Forecasts the final cost of a job as actual cost-to-date, plus committed
+ * cost (purchase orders issued but not yet invoiced), plus a remaining
+ * estimate for the uncompleted portion of the original budget:
+ *
+ *   forecast = actual + committed + budget × (1 − % complete)
+ *
+ * This is a standard earned-value approach — it doesn't get skewed by an
+ * early cost blip the way extrapolating the current run rate can, but still
+ * fully reflects cost overruns already booked as actual or committed.
  */
-export function jobForecast(job: JobBudgetLike, entries: JobCostEntryLike[]): JobForecast {
+export function jobForecast(job: JobBudgetLike, entries: JobCostEntryLike[], committedCost = 0): JobForecast {
   const actual = actualCostsByCategory(entries);
-  const forecastFinalCost =
-    job.percentComplete > 0 ? actual.total / (job.percentComplete / 100) : jobBudgetTotal(job);
+  const remainingEstimate = Math.max(0, jobBudgetTotal(job) * (1 - job.percentComplete / 100));
+  const forecastFinalCost = actual.total + committedCost + remainingEstimate;
   const forecastProfit = job.quoteAmount - forecastFinalCost;
   const forecastMarginPercent = marginFromPrice(forecastFinalCost, job.quoteAmount);
-  return { actualTotalCost: actual.total, forecastFinalCost, forecastProfit, forecastMarginPercent };
+  return { actualTotalCost: actual.total, committedCost, forecastFinalCost, forecastProfit, forecastMarginPercent };
 }
 
 export interface WipResult {
@@ -488,6 +507,80 @@ export function daysOverdue(dueDate: Date | string, outstanding: number, now: Da
 }
 
 // ---------------------------------------------------------------------------
+// Variations — scope changes that must never silently alter the original
+// contract value. A variation is priced cost-plus-markup (not margin): the
+// spec's own variation fields call it "markup", so it stays that way here.
+// ---------------------------------------------------------------------------
+
+export interface VariationLike {
+  labourAllowance: number;
+  materialAllowance: number;
+  subcontractorAllowance: number;
+  otherAllowance: number;
+  markupPercent: number;
+  sellPriceOverride?: number | null;
+  status: string; // PENDING | APPROVED | DECLINED
+}
+
+export function variationAllowanceTotal(v: VariationLike): number {
+  return v.labourAllowance + v.materialAllowance + v.subcontractorAllowance + v.otherAllowance;
+}
+
+export function variationSellPrice(v: VariationLike): number {
+  if (v.sellPriceOverride != null) return v.sellPriceOverride;
+  return variationAllowanceTotal(v) * (1 + v.markupPercent / 100);
+}
+
+export function variationProfit(v: VariationLike): number {
+  return variationSellPrice(v) - variationAllowanceTotal(v);
+}
+
+/**
+ * Folds APPROVED variations into a job's contract value and budget, without
+ * mutating the original quote — callers should keep the original job object
+ * around separately (e.g. as `originalQuoteAmount`) for display.
+ */
+export function applyApprovedVariations<T extends JobBudgetLike>(job: T, variations: VariationLike[]): T {
+  const approved = variations.filter((v) => v.status === "APPROVED");
+  const addedSell = approved.reduce((sum, v) => sum + variationSellPrice(v), 0);
+  const addedLabour = approved.reduce((sum, v) => sum + v.labourAllowance, 0);
+  const addedMaterials = approved.reduce((sum, v) => sum + v.materialAllowance, 0);
+  const addedSubs = approved.reduce((sum, v) => sum + v.subcontractorAllowance, 0);
+  const addedOther = approved.reduce((sum, v) => sum + v.otherAllowance, 0);
+  return {
+    ...job,
+    quoteAmount: job.quoteAmount + addedSell,
+    budgetLabourCost: job.budgetLabourCost + addedLabour,
+    budgetMaterials: job.budgetMaterials + addedMaterials,
+    budgetSubcontractors: job.budgetSubcontractors + addedSubs,
+    budgetOtherDirectCosts: job.budgetOtherDirectCosts + addedOther,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Purchasing — committed cost (issued but not yet invoiced) is what makes a
+// job look profitable purely because a supplier bill hasn't arrived yet.
+// ---------------------------------------------------------------------------
+
+export interface PurchaseOrderLineLike {
+  quantity: number;
+  unitCost: number;
+}
+
+export interface PurchaseOrderLike {
+  status: string;
+  lines: PurchaseOrderLineLike[];
+}
+
+export function purchaseOrderTotal(po: PurchaseOrderLike): number {
+  return po.lines.reduce((sum, l) => sum + l.quantity * l.unitCost, 0);
+}
+
+export function committedCost(purchaseOrders: PurchaseOrderLike[], openStatuses: string[]): number {
+  return purchaseOrders.filter((po) => openStatuses.includes(po.status)).reduce((sum, po) => sum + purchaseOrderTotal(po), 0);
+}
+
+// ---------------------------------------------------------------------------
 // Job overhead allocation (for margin reporting / P&L)
 // ---------------------------------------------------------------------------
 
@@ -525,7 +618,6 @@ export function trafficLight(value: number, warnThreshold: number, dangerThresho
 export interface JobLike extends JobBudgetLike {
   id: number;
   jobNumber: string;
-  customerName: string;
   status: string;
   targetMarginPercent?: number | null;
 }
@@ -548,10 +640,15 @@ export interface InvoiceSummary extends InvoiceWithId {
   daysOverdue: number;
 }
 
-export interface JobFinancials {
-  job: JobLike;
+export interface JobFinancials<J extends JobLike = JobLike> {
+  job: J;
   actual: ActualCostsByCategory;
   forecast: JobForecast;
+  /** The immutable, original quoted contract value — never changed by variations. */
+  originalQuoteAmount: number;
+  /** Original quote + all APPROVED variations. Used for margin, WIP and forecast. */
+  revisedContractValue: number;
+  approvedVariationsTotal: number;
   budgetTotal: number;
   expectedProfit: number;
   expectedMarginPercent: number;
@@ -569,19 +666,25 @@ export interface JobFinancials {
   hasOverdueInvoice: boolean;
 }
 
-export function computeJobFinancials(
-  job: JobLike,
+export function computeJobFinancials<J extends JobLike>(
+  job: J,
   costEntries: JobCostEntryLike[],
   invoices: InvoiceWithId[],
   payments: PaymentWithInvoiceId[],
+  variations: VariationLike[],
+  committedCostAmount: number,
   businessTargetMarginPercent: number,
   now: Date = new Date(),
-): JobFinancials {
+): JobFinancials<J> {
+  // Fold in approved variations without ever mutating the original quote.
+  const effectiveJob = applyApprovedVariations(job, variations);
+  const approvedVariationsTotal = effectiveJob.quoteAmount - job.quoteAmount;
+
   const actual = actualCostsByCategory(costEntries);
-  const forecast = jobForecast(job, costEntries);
-  const budgetTotal = jobBudgetTotal(job);
-  const expectedProfit = jobExpectedProfit(job);
-  const expectedMarginPercent = jobExpectedMarginPercent(job);
+  const forecast = jobForecast(effectiveJob, costEntries, committedCostAmount);
+  const budgetTotal = jobBudgetTotal(effectiveJob);
+  const expectedProfit = jobExpectedProfit(effectiveJob);
+  const expectedMarginPercent = jobExpectedMarginPercent(effectiveJob);
 
   const invoiceSummaries: InvoiceSummary[] = invoices.map((inv) => {
     const invoicePayments = payments.filter((p) => p.invoiceId === inv.id);
@@ -598,7 +701,7 @@ export function computeJobFinancials(
   const totalReceived = payments.reduce((sum, p) => sum + p.amount, 0);
   const totalOutstanding = totalInvoiced - totalReceived;
 
-  const wip = jobWip(job, totalInvoiced);
+  const wip = jobWip(effectiveJob, totalInvoiced);
   const cash = jobCashPosition(actual.total, totalReceived);
 
   const targetMarginPercent = job.targetMarginPercent ?? businessTargetMarginPercent;
@@ -607,6 +710,9 @@ export function computeJobFinancials(
     job,
     actual,
     forecast,
+    originalQuoteAmount: job.quoteAmount,
+    revisedContractValue: effectiveJob.quoteAmount,
+    approvedVariationsTotal,
     budgetTotal,
     expectedProfit,
     expectedMarginPercent,
@@ -618,9 +724,9 @@ export function computeJobFinancials(
     totalOutstanding,
     targetMarginPercent,
     belowTargetMargin: forecast.forecastMarginPercent < targetMarginPercent,
-    overBudgetLabourHours: job.budgetLabourHours > 0 && actual.labourHours > job.budgetLabourHours,
-    overBudgetMaterials: job.budgetMaterials > 0 && actual.materials > job.budgetMaterials,
-    heavyCashFunding: job.quoteAmount > 0 && cash.cashPosition < -(CASH_FUNDING_ALERT_FRACTION * job.quoteAmount),
+    overBudgetLabourHours: effectiveJob.budgetLabourHours > 0 && actual.labourHours > effectiveJob.budgetLabourHours,
+    overBudgetMaterials: effectiveJob.budgetMaterials > 0 && actual.materials > effectiveJob.budgetMaterials,
+    heavyCashFunding: effectiveJob.quoteAmount > 0 && cash.cashPosition < -(CASH_FUNDING_ALERT_FRACTION * effectiveJob.quoteAmount),
     hasOverdueInvoice: invoiceSummaries.some((inv) => inv.daysOverdue > 0),
   };
 }

@@ -128,6 +128,8 @@ export default async function DashboardPage() {
 
         <Card title="Jobs">
           <StatGrid>
+            <StatTile label="Open enquiries" value={String(data.openEnquiries)} sublabel="Sales pipeline" />
+            <StatTile label="Quotes awaiting action" value={String(data.quotesAwaitingAction)} />
             <StatTile label="Active job value" value={formatCurrency(data.totalActiveJobValue)} />
             <StatTile label="Est. profit (active)" value={formatCurrency(data.estimatedActiveProfit)} />
             <StatTile label="Avg margin" value={formatPercent(data.avgActiveMarginPercent)} severity={data.severities.jobMargin} />
@@ -143,9 +145,17 @@ export default async function DashboardPage() {
               severity={data.jobsBelowMargin.length === 0 ? "green" : "red"}
             />
           </StatGrid>
-          <Link href="/jobs" className="mt-4 inline-block text-sm font-medium text-blue-600 hover:underline">
-            View all jobs →
-          </Link>
+          <div className="mt-4 flex flex-wrap gap-4 text-sm font-medium">
+            <Link href="/enquiries" className="text-blue-600 hover:underline">
+              Enquiries →
+            </Link>
+            <Link href="/quotes" className="text-blue-600 hover:underline">
+              Quotes →
+            </Link>
+            <Link href="/jobs" className="text-blue-600 hover:underline">
+              All jobs →
+            </Link>
+          </div>
         </Card>
 
         <Card title="Cash">
@@ -204,7 +214,7 @@ export default async function DashboardPage() {
                           {jf.job.jobNumber}
                         </Link>
                       </td>
-                      <td className="py-2 pr-4">{jf.job.customerName}</td>
+                      <td className="py-2 pr-4">{jf.job.customer.name}</td>
                       <td className="py-2 pr-4">
                         <TrafficBadge
                           severity={jf.belowTargetMargin ? "red" : "green"}

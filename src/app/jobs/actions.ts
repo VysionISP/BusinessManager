@@ -21,9 +21,15 @@ function dateOrNull(formData: FormData, key: string): Date | null {
 }
 
 function jobData(formData: FormData) {
+  const siteIdRaw = str(formData, "siteId");
+  const projectManagerIdRaw = str(formData, "projectManagerId");
   return {
     jobNumber: str(formData, "jobNumber"),
-    customerName: str(formData, "customerName"),
+    customerId: num(formData, "customerId"),
+    siteId: siteIdRaw ? Number(siteIdRaw) : null,
+    projectManagerId: projectManagerIdRaw ? Number(projectManagerIdRaw) : null,
+    customerOrderNumber: str(formData, "customerOrderNumber") || null,
+    pricingMethod: str(formData, "pricingMethod") || "FIXED_PRICE",
     description: str(formData, "description"),
     status: str(formData, "status") || "LEAD",
     quoteDate: dateOrNull(formData, "quoteDate"),
@@ -37,6 +43,7 @@ function jobData(formData: FormData) {
     budgetOtherDirectCosts: num(formData, "budgetOtherDirectCosts"),
     percentComplete: num(formData, "percentComplete"),
     targetMarginPercent: formData.get("targetMarginPercent") ? num(formData, "targetMarginPercent") : null,
+    retentionPercent: num(formData, "retentionPercent"),
   };
 }
 
@@ -73,9 +80,11 @@ export async function deleteJob(id: number) {
 }
 
 export async function addCostEntry(jobId: number, formData: FormData) {
+  const phaseIdRaw = str(formData, "phaseId");
   await prisma.jobCostEntry.create({
     data: {
       jobId,
+      phaseId: phaseIdRaw ? Number(phaseIdRaw) : null,
       date: dateOrNull(formData, "date") ?? new Date(),
       category: str(formData, "category") || "OTHER",
       description: str(formData, "description"),
@@ -136,4 +145,50 @@ export async function deletePayment(jobId: number, paymentId: number) {
   revalidatePath(`/jobs/${jobId}`);
   revalidatePath("/jobs");
   revalidatePath("/");
+}
+
+export async function addPhase(jobId: number, formData: FormData) {
+  const existingCount = await prisma.jobPhase.count({ where: { jobId } });
+  await prisma.jobPhase.create({
+    data: {
+      jobId,
+      name: str(formData, "name"),
+      description: str(formData, "description") || null,
+      sortOrder: existingCount,
+      status: str(formData, "status") || "PENDING",
+      scheduledStart: dateOrNull(formData, "scheduledStart"),
+      scheduledEnd: dateOrNull(formData, "scheduledEnd"),
+      budgetLabourHours: num(formData, "budgetLabourHours"),
+      budgetLabourCost: num(formData, "budgetLabourCost"),
+      budgetMaterials: num(formData, "budgetMaterials"),
+      budgetSubcontractors: num(formData, "budgetSubcontractors"),
+      budgetOtherDirectCosts: num(formData, "budgetOtherDirectCosts"),
+    },
+  });
+  revalidatePath(`/jobs/${jobId}`);
+}
+
+export async function updatePhase(jobId: number, phaseId: number, formData: FormData) {
+  await prisma.jobPhase.update({
+    where: { id: phaseId },
+    data: {
+      name: str(formData, "name"),
+      description: str(formData, "description") || null,
+      status: str(formData, "status") || "PENDING",
+      scheduledStart: dateOrNull(formData, "scheduledStart"),
+      scheduledEnd: dateOrNull(formData, "scheduledEnd"),
+      budgetLabourHours: num(formData, "budgetLabourHours"),
+      budgetLabourCost: num(formData, "budgetLabourCost"),
+      budgetMaterials: num(formData, "budgetMaterials"),
+      budgetSubcontractors: num(formData, "budgetSubcontractors"),
+      budgetOtherDirectCosts: num(formData, "budgetOtherDirectCosts"),
+      percentComplete: num(formData, "percentComplete"),
+    },
+  });
+  revalidatePath(`/jobs/${jobId}`);
+}
+
+export async function deletePhase(jobId: number, phaseId: number) {
+  await prisma.jobPhase.delete({ where: { id: phaseId } });
+  revalidatePath(`/jobs/${jobId}`);
 }

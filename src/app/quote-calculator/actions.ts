@@ -15,6 +15,15 @@ export interface CreateJobFromQuoteInput {
 }
 
 export async function createJobFromQuote(input: CreateJobFromQuoteInput): Promise<number> {
+  const customerName = input.customerName.trim() || "New customer";
+
+  // Fast on-the-spot quoting shouldn't require setting up a customer record
+  // first — find an existing customer by name, or create one on the fly.
+  let customer = await prisma.customer.findFirst({ where: { name: { equals: customerName } } });
+  if (!customer) {
+    customer = await prisma.customer.create({ data: { name: customerName } });
+  }
+
   const year = new Date().getFullYear();
   const count = await prisma.job.count();
   let jobNumber = `J-${year}-${String(count + 1).padStart(3, "0")}`;
@@ -23,7 +32,7 @@ export async function createJobFromQuote(input: CreateJobFromQuoteInput): Promis
     prisma.job.create({
       data: {
         jobNumber: num,
-        customerName: input.customerName || "New customer",
+        customerId: customer.id,
         description: input.description || "Quoted job",
         status: "QUOTED",
         quoteDate: new Date(),
@@ -46,6 +55,7 @@ export async function createJobFromQuote(input: CreateJobFromQuoteInput): Promis
   }
 
   revalidatePath("/jobs");
+  revalidatePath("/customers");
   revalidatePath("/");
   return job.id;
 }

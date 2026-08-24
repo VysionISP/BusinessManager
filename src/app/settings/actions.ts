@@ -19,5 +19,5 @@ export async function updateSettings(formData: FormData) {
   revalidatePath("/settings");
   revalidatePath("/break-even");
   revalidatePath("/cashflow");
-  revalidatePath("/quotes");
+  revalidatePath("/quote-calculator");
 }

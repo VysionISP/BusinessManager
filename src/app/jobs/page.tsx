@@ -14,7 +14,7 @@ function sortJobs(jobs: Awaited<ReturnType<typeof getJobsWithFinancials>>, sort:
   const sorted = [...jobs].sort((a, b) => {
     let diff = 0;
     if (sort === "margin") diff = a.forecast.forecastMarginPercent - b.forecast.forecastMarginPercent;
-    if (sort === "value") diff = a.job.quoteAmount - b.job.quoteAmount;
+    if (sort === "value") diff = a.revisedContractValue - b.revisedContractValue;
     if (sort === "cash") diff = a.cash.cashPosition - b.cash.cashPosition;
     return dir === "asc" ? diff : -diff;
   });
@@ -58,7 +58,7 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
                 <th className="py-2 pr-4">Job</th>
                 <th className="py-2 pr-4">Customer</th>
                 <th className="py-2 pr-4">Status</th>
-                <th className="py-2 pr-4">{sortLink("value", sortKey, sortDir, "Quote value")}</th>
+                <th className="py-2 pr-4">{sortLink("value", sortKey, sortDir, "Contract value")}</th>
                 <th className="py-2 pr-4">{sortLink("margin", sortKey, sortDir, "Forecast margin")}</th>
                 <th className="py-2 pr-4">WIP</th>
                 <th className="py-2 pr-4">{sortLink("cash", sortKey, sortDir, "Cash position")}</th>
@@ -72,11 +72,21 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
                       {jf.job.jobNumber}
                     </Link>
                   </td>
-                  <td className="py-2 pr-4">{jf.job.customerName}</td>
+                  <td className="py-2 pr-4">
+                    <Link href={`/customers/${jf.job.customerId}`} className="hover:underline">
+                      {jf.job.customer.name}
+                    </Link>
+                    {jf.job.site && <span className="block text-xs text-slate-400">{jf.job.site.name}</span>}
+                  </td>
                   <td className="py-2 pr-4">
                     <JobStatusBadge status={jf.job.status} />
                   </td>
-                  <td className="py-2 pr-4">{formatCurrency(jf.job.quoteAmount)}</td>
+                  <td className="py-2 pr-4">
+                    {formatCurrency(jf.revisedContractValue)}
+                    {jf.approvedVariationsTotal !== 0 && (
+                      <span className="block text-xs text-slate-400">incl. {formatCurrency(jf.approvedVariationsTotal)} variations</span>
+                    )}
+                  </td>
                   <td className="py-2 pr-4">
                     <TrafficBadge severity={jf.belowTargetMargin ? "red" : "green"} label={formatPercent(jf.forecast.forecastMarginPercent, 1)} />
                   </td>

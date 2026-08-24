@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   actualCostsByCategory,
+  applyApprovedVariations,
   breakEvenHourlyRate,
   businessRunningCosts,
+  committedCost,
   daysOverdue,
   employeeTrueCost,
   invoiceOutstanding,
@@ -11,8 +13,11 @@ import {
   jobWip,
   markupFromPrice,
   priceForMargin,
+  purchaseOrderTotal,
   quoteAtMargins,
   quoteDirectCost,
+  variationProfit,
+  variationSellPrice,
 } from "./calculations";
 
 describe("employeeTrueCost", () => {
@@ -171,5 +176,72 @@ describe("invoicing", () => {
     expect(overdue).toBeGreaterThanOrEqual(4);
 
     expect(daysOverdue(new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), 0)).toBe(0);
+  });
+});
+
+describe("variations", () => {
+  it("prices a variation cost-plus-markup, not margin", () => {
+    const v = { labourAllowance: 800, materialAllowance: 200, subcontractorAllowance: 0, otherAllowance: 0, markupPercent: 25, status: "APPROVED" };
+    expect(variationSellPrice(v)).toBeCloseTo(1250); // 1000 * 1.25
+    expect(variationProfit(v)).toBeCloseTo(250);
+  });
+
+  it("respects a manual sell price override", () => {
+    const v = { labourAllowance: 800, materialAllowance: 200, subcontractorAllowance: 0, otherAllowance: 0, markupPercent: 25, sellPriceOverride: 1500, status: "APPROVED" };
+    expect(variationSellPrice(v)).toBe(1500);
+  });
+
+  it("only folds APPROVED variations into the job's contract value and budget, never the original", () => {
+    const job = {
+      quoteAmount: 20000,
+      budgetLabourHours: 100,
+      budgetLabourCost: 8000,
+      budgetMaterials: 6000,
+      budgetSubcontractors: 0,
+      budgetOtherDirectCosts: 0,
+      percentComplete: 50,
+    };
+    const variations = [
+      { labourAllowance: 400, materialAllowance: 100, subcontractorAllowance: 0, otherAllowance: 0, markupPercent: 20, status: "APPROVED" }, // sell = 600
+      { labourAllowance: 1000, materialAllowance: 0, subcontractorAllowance: 0, otherAllowance: 0, markupPercent: 20, status: "PENDING" }, // not yet approved
+    ];
+    const effective = applyApprovedVariations(job, variations);
+    expect(effective.quoteAmount).toBeCloseTo(20600); // only the approved variation counted
+    expect(effective.budgetLabourCost).toBeCloseTo(8400);
+    expect(job.quoteAmount).toBe(20000); // original untouched
+  });
+});
+
+describe("purchasing / committed cost", () => {
+  const pos = [
+    { status: "SENT", lines: [{ quantity: 10, unitCost: 25 }, { quantity: 2, unitCost: 50 }] }, // 350, open
+    { status: "CLOSED", lines: [{ quantity: 5, unitCost: 100 }] }, // 500, closed — not committed
+  ];
+
+  it("totals a purchase order from its lines", () => {
+    expect(purchaseOrderTotal(pos[0])).toBe(350);
+  });
+
+  it("only counts open-status POs as committed cost", () => {
+    expect(committedCost(pos, ["DRAFT", "SENT", "APPROVED"])).toBe(350);
+  });
+});
+
+describe("jobForecast with committed cost", () => {
+  it("adds committed cost on top of actual and the remaining budget estimate", () => {
+    const job = {
+      quoteAmount: 50000,
+      budgetLabourHours: 200,
+      budgetLabourCost: 20000,
+      budgetMaterials: 15000,
+      budgetSubcontractors: 0,
+      budgetOtherDirectCosts: 0,
+      percentComplete: 50, // remaining estimate = 35000 * 0.5 = 17500
+    };
+    const entries = [{ category: "LABOUR", amount: 10000, hours: 100 }];
+    const forecast = jobForecast(job, entries, 5000); // 5000 committed via open POs
+    expect(forecast.actualTotalCost).toBe(10000);
+    expect(forecast.committedCost).toBe(5000);
+    expect(forecast.forecastFinalCost).toBeCloseTo(10000 + 5000 + 17500);
   });
 });

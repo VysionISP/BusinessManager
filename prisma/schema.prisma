@@ -41,7 +41,9 @@ model Employee {
   active                       Boolean  @default(true)
   createdAt                    DateTime @default(now())
 
-  payrollEntries PayrollEntry[]
+  payrollEntries     PayrollEntry[]
+  scheduleEvents     ScheduleEvent[]
+  projectManagerJobs Job[]           @relation("ProjectManager")
 }
 
 model PayrollEntry {
@@ -87,17 +89,183 @@ model Expense {
   @@index([date])
 }
 
+// ---------------------------------------------------------------------------
+// Customers, sites & assets
+// ---------------------------------------------------------------------------
+
+model Customer {
+  id                  Int      @id @default(autoincrement())
+  name                String
+  customerType        String   @default("RESIDENTIAL") // RESIDENTIAL | COMMERCIAL | BUILDER | PROPERTY_MANAGER | INTERNAL
+  active              Boolean  @default(true)
+  mainContactName     String?
+  mainContactPhone    String?
+  mainContactEmail    String?
+  billingContactName  String?
+  billingContactPhone String?
+  billingContactEmail String?
+  billingAddress      String?
+  phone               String?
+  email               String?
+  accountNumber       String?
+  source              String?
+  notes               String?
+  paymentTermsDays    Int      @default(14)
+  createdAt           DateTime @default(now())
+
+  sites              Site[]
+  jobs               Job[]
+  enquiries          Enquiry[]
+  quotes             Quote[]
+  assets             Asset[]
+  recurringTemplates RecurringJobTemplate[]
+}
+
+model Site {
+  id                 Int      @id @default(autoincrement())
+  customerId         Int
+  customer           Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  name               String
+  address            String
+  contactName        String?
+  contactPhone       String?
+  accessInstructions String?
+  hoursNotes         String?
+  hazardsNotes       String?
+  createdAt          DateTime @default(now())
+
+  jobs               Job[]
+  enquiries          Enquiry[]
+  quotes             Quote[]
+  assets             Asset[]
+  recurringTemplates RecurringJobTemplate[]
+  scheduleEvents     ScheduleEvent[]
+
+  @@index([customerId])
+}
+
+model Asset {
+  id                    Int       @id @default(autoincrement())
+  customerId            Int
+  customer              Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  siteId                Int?
+  site                  Site?     @relation(fields: [siteId], references: [id], onDelete: SetNull)
+  assetNumber           String?
+  type                  String // Switchboard, RCD, Emergency Light, Generator, CCTV Camera, etc.
+  manufacturer          String?
+  model                 String?
+  serialNumber          String?
+  installedDate         DateTime?
+  warrantyExpiry        DateTime?
+  location              String?
+  serviceIntervalMonths Int?
+  lastServiceDate       DateTime?
+  nextServiceDate       DateTime?
+  notes                 String?
+  createdAt             DateTime  @default(now())
+
+  @@index([customerId])
+  @@index([nextServiceDate])
+}
+
+// ---------------------------------------------------------------------------
+// Sales pipeline: enquiries & quotes
+// ---------------------------------------------------------------------------
+
+model Enquiry {
+  id             Int       @id @default(autoincrement())
+  customerId     Int?
+  customer       Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  siteId         Int?
+  site           Site?     @relation(fields: [siteId], references: [id], onDelete: SetNull)
+  contactName    String?
+  contactPhone   String?
+  contactEmail   String?
+  source         String? // Referral, Google, Repeat, Signage, etc.
+  workRequested  String
+  urgency        String    @default("NORMAL") // LOW | NORMAL | HIGH | EMERGENCY
+  preferredTime  String?
+  status         String    @default("NEW") // NEW | CONTACT_REQUIRED | SITE_VISIT_REQUIRED | INFO_REQUESTED | READY_TO_QUOTE | CONVERTED | LOST | NO_RESPONSE
+  estimatedValue Float?
+  assignedTo     String?
+  followUpDate   DateTime?
+  outcomeNotes   String?
+  createdAt      DateTime  @default(now())
+
+  jobs Job[]
+
+  @@index([status])
+}
+
+model Quote {
+  id                 Int       @id @default(autoincrement())
+  quoteNumber        String // shared across versions of the same quote
+  version            Int       @default(1)
+  customerId         Int
+  customer           Customer  @relation(fields: [customerId], references: [id])
+  siteId             Int?
+  site               Site?     @relation(fields: [siteId], references: [id], onDelete: SetNull)
+  jobId              Int?
+  job                Job?      @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  title              String
+  customerReference  String?
+  introduction       String?
+  scopeOfWork        String?
+  exclusions         String?
+  termsAndConditions String?
+  issueDate          DateTime?
+  expiryDate         DateTime?
+  status             String    @default("DRAFT") // DRAFT | SENT | ACCEPTED | DECLINED | EXPIRED
+  acceptedByName     String?
+  acceptedDate       DateTime?
+  createdAt          DateTime  @default(now())
+
+  lines QuoteLine[]
+
+  @@index([quoteNumber])
+  @@index([jobId])
+}
+
+model QuoteLine {
+  id          Int     @id @default(autoincrement())
+  quoteId     Int
+  quote       Quote   @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  section     String?
+  description String
+  quantity    Float   @default(1)
+  unit        String  @default("item")
+  unitCost    Float   @default(0)
+  unitPrice   Float   @default(0)
+  sortOrder   Int     @default(0)
+
+  @@index([quoteId])
+}
+
+// ---------------------------------------------------------------------------
+// Jobs, phases & variations
+// ---------------------------------------------------------------------------
+
 model Job {
   id                     Int       @id @default(autoincrement())
   jobNumber              String    @unique
-  customerName           String
+  customerId             Int
+  customer               Customer  @relation(fields: [customerId], references: [id])
+  siteId                 Int?
+  site                   Site?     @relation(fields: [siteId], references: [id])
+  enquiryId              Int?
+  enquiry                Enquiry?  @relation(fields: [enquiryId], references: [id], onDelete: SetNull)
+  projectManagerId       Int?
+  projectManager         Employee? @relation("ProjectManager", fields: [projectManagerId], references: [id], onDelete: SetNull)
   description            String
-  status                 String    @default("LEAD") // LEAD | QUOTED | APPROVED | IN_PROGRESS | COMPLETE | INVOICED | PAID | LOST
+  customerOrderNumber    String?
+  pricingMethod          String    @default("FIXED_PRICE") // FIXED_PRICE | ESTIMATE | CHARGE_UP
+  status                 String    @default("LEAD") // LEAD | QUOTED | APPROVED | PENDING | SCHEDULED | IN_PROGRESS | BACK_COSTING | COMPLETE | INVOICED | PAID | LOST
   quoteDate              DateTime?
   startDate              DateTime?
   expectedCompletionDate DateTime?
 
-  // Original budget / quote
+  // Original budget / quote — the immutable original contract value.
+  // Variations never change this; see Variation for approved scope changes.
   quoteAmount            Float @default(0)
   budgetLabourHours      Float @default(0)
   budgetLabourCost       Float @default(0)
@@ -108,33 +276,106 @@ model Job {
   // Management estimate of completion, drives WIP
   percentComplete     Float  @default(0)
   targetMarginPercent Float? // overrides business default if set
+  retentionPercent    Float  @default(0) // held back from progress claims on larger contracts
 
   createdAt DateTime @default(now())
 
-  costEntries JobCostEntry[]
-  invoices    Invoice[]
+  phases           JobPhase[]
+  costEntries      JobCostEntry[]
+  invoices         Invoice[]
+  variations       Variation[]
+  purchaseOrders   PurchaseOrder[]
+  supplierInvoices SupplierInvoice[]
+  formSubmissions  FormSubmission[]
+  scheduleEvents   ScheduleEvent[]
+  quotes           Quote[]
+
+  @@index([customerId])
+  @@index([status])
+}
+
+model JobPhase {
+  id             Int       @id @default(autoincrement())
+  jobId          Int
+  job            Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  name           String
+  description    String?
+  sortOrder      Int       @default(0)
+  status         String    @default("PENDING") // PENDING | SCHEDULED | IN_PROGRESS | COMPLETE | INVOICED
+  scheduledStart DateTime?
+  scheduledEnd   DateTime?
+
+  budgetLabourHours      Float @default(0)
+  budgetLabourCost       Float @default(0)
+  budgetMaterials        Float @default(0)
+  budgetSubcontractors   Float @default(0)
+  budgetOtherDirectCosts Float @default(0)
+  percentComplete        Float @default(0)
+
+  createdAt DateTime @default(now())
+
+  costEntries      JobCostEntry[]
+  scheduleEvents   ScheduleEvent[]
+  purchaseOrders   PurchaseOrder[]
+  supplierInvoices SupplierInvoice[]
+  formSubmissions  FormSubmission[]
+
+  @@index([jobId])
+}
+
+model Variation {
+  id                     Int       @id @default(autoincrement())
+  jobId                  Int
+  job                    Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  variationNumber        String
+  title                  String
+  scope                  String
+  reason                 String?
+  requestedBy            String?
+  requestDate            DateTime?
+  labourAllowance        Float     @default(0)
+  materialAllowance      Float     @default(0)
+  subcontractorAllowance Float     @default(0)
+  otherAllowance         Float     @default(0)
+  markupPercent          Float     @default(20)
+  sellPriceOverride      Float? // if set, used instead of the computed markup price
+  status                 String    @default("PENDING") // PENDING | APPROVED | DECLINED
+  customerApproved       Boolean   @default(false)
+  approvedDate           DateTime?
+  createdAt              DateTime  @default(now())
+
+  @@index([jobId])
 }
 
 model JobCostEntry {
-  id          Int      @id @default(autoincrement())
+  id          Int       @id @default(autoincrement())
   jobId       Int
-  job         Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  job         Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  phaseId     Int?
+  phase       JobPhase? @relation(fields: [phaseId], references: [id], onDelete: SetNull)
   date        DateTime
   category    String // LABOUR | MATERIALS | SUBCONTRACTOR | EQUIPMENT | OTHER
   description String
   hours       Float? // informational, only meaningful for LABOUR
   amount      Float
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
+
+  supplierInvoice SupplierInvoice?
 
   @@index([jobId])
+  @@index([phaseId])
 }
+
+// ---------------------------------------------------------------------------
+// Invoicing
+// ---------------------------------------------------------------------------
 
 model Invoice {
   id            Int      @id @default(autoincrement())
   jobId         Int
   job           Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
   invoiceNumber String
-  type          String   @default("PROGRESS") // DEPOSIT | PROGRESS | FINAL
+  type          String   @default("PROGRESS") // DEPOSIT | PROGRESS | FINAL | VARIATION | RETENTION
   issueDate     DateTime
   dueDate       DateTime
   amount        Float
@@ -156,6 +397,169 @@ model Payment {
   @@index([invoiceId])
 }
 
+// ---------------------------------------------------------------------------
+// Purchasing & suppliers
+// ---------------------------------------------------------------------------
+
+model Supplier {
+  id               Int      @id @default(autoincrement())
+  name             String
+  accountNumber    String?
+  contactName      String?
+  phone            String?
+  email            String?
+  paymentTermsDays Int      @default(30)
+  notes            String?
+  active           Boolean  @default(true)
+  createdAt        DateTime @default(now())
+
+  purchaseOrders   PurchaseOrder[]
+  supplierInvoices SupplierInvoice[]
+}
+
+model PurchaseOrder {
+  id              Int       @id @default(autoincrement())
+  poNumber        String    @unique
+  supplierId      Int
+  supplier        Supplier  @relation(fields: [supplierId], references: [id])
+  jobId           Int
+  job             Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  phaseId         Int?
+  phase           JobPhase? @relation(fields: [phaseId], references: [id], onDelete: SetNull)
+  status          String    @default("DRAFT") // DRAFT | APPROVAL_REQUIRED | APPROVED | SENT | PARTIALLY_SUPPLIED | SUPPLIED | INVOICED | CLOSED | CANCELLED
+  requestedBy     String?
+  approvedBy      String?
+  requiredDate    DateTime?
+  deliveryAddress String?
+  instructions    String?
+  createdAt       DateTime  @default(now())
+
+  lines            PurchaseOrderLine[]
+  supplierInvoices SupplierInvoice[]
+
+  @@index([jobId])
+  @@index([status])
+}
+
+model PurchaseOrderLine {
+  id              Int           @id @default(autoincrement())
+  purchaseOrderId Int
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  description     String
+  quantity        Float         @default(1)
+  unitCost        Float         @default(0)
+
+  @@index([purchaseOrderId])
+}
+
+model SupplierInvoice {
+  id              Int            @id @default(autoincrement())
+  supplierId      Int
+  supplier        Supplier       @relation(fields: [supplierId], references: [id])
+  purchaseOrderId Int?
+  purchaseOrder   PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id], onDelete: SetNull)
+  jobId           Int
+  job             Job            @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  phaseId         Int?
+  phase           JobPhase?      @relation(fields: [phaseId], references: [id], onDelete: SetNull)
+  invoiceNumber   String
+  category        String         @default("MATERIALS") // MATERIALS | SUBCONTRACTOR | EQUIPMENT | OTHER
+  date            DateTime
+  dueDate         DateTime?
+  amount          Float
+  status          String         @default("UNPAID") // UNPAID | PAID
+  jobCostEntryId  Int?           @unique
+  jobCostEntry    JobCostEntry?  @relation(fields: [jobCostEntryId], references: [id], onDelete: SetNull)
+  createdAt       DateTime       @default(now())
+
+  @@index([jobId])
+}
+
+// ---------------------------------------------------------------------------
+// Forms & certificates (a certificate is a form template flagged as such)
+// ---------------------------------------------------------------------------
+
+model FormTemplate {
+  id            Int      @id @default(autoincrement())
+  name          String
+  description   String?
+  isCertificate Boolean  @default(false)
+  fieldsJson    String // JSON-encoded array of field definitions
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  submissions FormSubmission[]
+}
+
+model FormSubmission {
+  id             Int          @id @default(autoincrement())
+  formTemplateId Int
+  formTemplate   FormTemplate @relation(fields: [formTemplateId], references: [id])
+  jobId          Int?
+  job            Job?         @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  phaseId        Int?
+  phase          JobPhase?    @relation(fields: [phaseId], references: [id], onDelete: SetNull)
+  submittedBy    String?
+  submittedAt    DateTime     @default(now())
+  answersJson    String // JSON-encoded answers keyed by field id
+  status         String       @default("SUBMITTED") // DRAFT | SUBMITTED
+
+  @@index([jobId])
+  @@index([formTemplateId])
+}
+
+// ---------------------------------------------------------------------------
+// Scheduling & dispatch
+// ---------------------------------------------------------------------------
+
+model ScheduleEvent {
+  id         Int       @id @default(autoincrement())
+  jobId      Int?
+  job        Job?      @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  phaseId    Int?
+  phase      JobPhase? @relation(fields: [phaseId], references: [id], onDelete: SetNull)
+  siteId     Int?
+  site       Site?     @relation(fields: [siteId], references: [id], onDelete: SetNull)
+  employeeId Int?
+  employee   Employee? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+  eventType  String    @default("WORK") // QUOTE_VISIT | WORK | AFTER_HOURS | SHUTDOWN | INSPECTION | TESTING | SERVICE_CALL | RETURN_VISIT | TRAINING | LEAVE | OTHER
+  title      String
+  startAt    DateTime
+  endAt      DateTime
+  notes      String?
+  status     String    @default("SCHEDULED") // SCHEDULED | CONFIRMED | IN_PROGRESS | DONE | CANCELLED
+  createdAt  DateTime  @default(now())
+
+  @@index([startAt])
+  @@index([employeeId])
+}
+
+// ---------------------------------------------------------------------------
+// Recurring jobs & service reminders
+// ---------------------------------------------------------------------------
+
+model RecurringJobTemplate {
+  id                     Int      @id @default(autoincrement())
+  customerId             Int
+  customer               Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  siteId                 Int?
+  site                   Site?    @relation(fields: [siteId], references: [id], onDelete: SetNull)
+  name                   String
+  frequencyMonths        Int      @default(12)
+  nextDueDate            DateTime
+  jobDescriptionTemplate String
+  pricingMethod          String   @default("FIXED_PRICE")
+  defaultQuoteAmount     Float    @default(0)
+  active                 Boolean  @default(true)
+  createdAt              DateTime @default(now())
+
+  @@index([nextDueDate])
+}
+
+// ---------------------------------------------------------------------------
+// Cashflow
+// ---------------------------------------------------------------------------
+
 // One-off / ad-hoc forecast items layered on top of auto-computed
 // recurring payroll, super and overheads in the 13-week cashflow.
 model CashflowAdjustment {
@@ -168,4 +572,20 @@ model CashflowAdjustment {
   createdAt    DateTime @default(now())
 
   @@index([weekStarting])
+}
+
+// ---------------------------------------------------------------------------
+// Audit trail
+// ---------------------------------------------------------------------------
+
+model AuditLog {
+  id         Int      @id @default(autoincrement())
+  entityType String // "Job", "Invoice", "Quote", "Variation", "PurchaseOrder", etc.
+  entityId   Int
+  action     String // "CREATE" | "UPDATE" | "DELETE" | custom label
+  summary    String // human-readable description of what changed
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
 }
