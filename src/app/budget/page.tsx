@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Card } from "@/components/Card";
 import { PageHeader } from "@/components/PageHeader";
 import { TrafficBadge } from "@/components/Badge";
+import { EmptyRow, Table, Td, Th, THead, Tr } from "@/components/Table";
 import { formatCurrency, formatPercent } from "@/lib/format";
 import { getBudgetVsActual } from "@/lib/queries";
 
@@ -50,54 +51,44 @@ export default async function BudgetPage({ searchParams }: { searchParams: Promi
       />
 
       <Card>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">
-                <th className="py-2 pr-4">Category</th>
-                <th className="py-2 pr-4">Budget</th>
-                <th className="py-2 pr-4">Actual</th>
-                <th className="py-2 pr-4">Variance</th>
-                <th className="py-2 pr-4">% over/under</th>
+        <Table>
+          <THead>
+            <Th>Category</Th>
+            <Th>Budget</Th>
+            <Th>Actual</Th>
+            <Th>Variance</Th>
+            <Th>% over/under</Th>
+          </THead>
+          <tbody>
+            {data.rows.map((row) => {
+              const over = row.budget > 0 && row.variance > 0;
+              return (
+                <Tr key={row.key}>
+                  <Td className="font-medium">{row.label}</Td>
+                  <Td>{formatCurrency(row.budget)}</Td>
+                  <Td>{formatCurrency(row.actual)}</Td>
+                  <Td>
+                    <TrafficBadge severity={over ? "red" : "green"} label={`${row.variance >= 0 ? "+" : ""}${formatCurrency(row.variance)}`} />
+                  </Td>
+                  <Td>{row.budget > 0 ? formatPercent(row.percentVariance, 1) : "—"}</Td>
+                </Tr>
+              );
+            })}
+            {data.rows.length === 0 && <EmptyRow colSpan={5}>No overheads or expenses recorded for this month yet.</EmptyRow>}
+          </tbody>
+          {data.rows.length > 0 && (
+            <tfoot>
+              <tr className="border-t-2 border-slate-200 font-semibold dark:border-slate-700">
+                <td className="py-2 pr-4">Total</td>
+                <td className="py-2 pr-4">{formatCurrency(data.totalBudget)}</td>
+                <td className="py-2 pr-4">{formatCurrency(data.totalActual)}</td>
+                <td className="py-2 pr-4" colSpan={2}>
+                  {formatCurrency(data.totalActual - data.totalBudget)}
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {data.rows.map((row) => {
-                const over = row.budget > 0 && row.variance > 0;
-                return (
-                  <tr key={row.key} className="border-b border-slate-50 last:border-0 dark:border-slate-800/60">
-                    <td className="py-2 pr-4 font-medium">{row.label}</td>
-                    <td className="py-2 pr-4">{formatCurrency(row.budget)}</td>
-                    <td className="py-2 pr-4">{formatCurrency(row.actual)}</td>
-                    <td className="py-2 pr-4">
-                      <TrafficBadge severity={over ? "red" : "green"} label={`${row.variance >= 0 ? "+" : ""}${formatCurrency(row.variance)}`} />
-                    </td>
-                    <td className="py-2 pr-4">{row.budget > 0 ? formatPercent(row.percentVariance, 1) : "—"}</td>
-                  </tr>
-                );
-              })}
-              {data.rows.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="py-6 text-center text-slate-400">
-                    No overheads or expenses recorded for this month yet.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-            {data.rows.length > 0 && (
-              <tfoot>
-                <tr className="border-t-2 border-slate-200 font-semibold dark:border-slate-700">
-                  <td className="py-2 pr-4">Total</td>
-                  <td className="py-2 pr-4">{formatCurrency(data.totalBudget)}</td>
-                  <td className="py-2 pr-4">{formatCurrency(data.totalActual)}</td>
-                  <td className="py-2 pr-4" colSpan={2}>
-                    {formatCurrency(data.totalActual - data.totalBudget)}
-                  </td>
-                </tr>
-              </tfoot>
-            )}
-          </table>
-        </div>
+            </tfoot>
+          )}
+        </Table>
       </Card>
     </div>
   );

@@ -4,6 +4,7 @@ import { Card } from "@/components/Card";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/FormField";
 import { JobStatusBadge } from "@/components/Badge";
+import { EmptyRow, Table, Td, Th, THead, Tr } from "@/components/Table";
 import { CUSTOMER_TYPE_LABELS, ENQUIRY_STATUS_LABELS } from "@/lib/types";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { getCustomerDetail } from "@/lib/queries";
@@ -78,41 +79,31 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
           </Card>
 
           <Card title="Jobs">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead>
-                  <tr className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">
-                    <th className="py-2 pr-4">Job</th>
-                    <th className="py-2 pr-4">Description</th>
-                    <th className="py-2 pr-4">Status</th>
-                    <th className="py-2 pr-4">Quote amount</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {customer.jobs.map((job) => (
-                    <tr key={job.id} className="border-b border-slate-50 last:border-0 dark:border-slate-800/60">
-                      <td className="py-2 pr-4 font-medium">
-                        <Link href={`/jobs/${job.id}`} className="text-blue-600 hover:underline">
-                          {job.jobNumber}
-                        </Link>
-                      </td>
-                      <td className="py-2 pr-4">{job.description}</td>
-                      <td className="py-2 pr-4">
-                        <JobStatusBadge status={job.status} />
-                      </td>
-                      <td className="py-2 pr-4">{formatCurrency(job.quoteAmount)}</td>
-                    </tr>
-                  ))}
-                  {customer.jobs.length === 0 && (
-                    <tr>
-                      <td colSpan={4} className="py-4 text-center text-slate-400">
-                        No jobs yet.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+            <Table>
+              <THead>
+                <Th>Job</Th>
+                <Th>Description</Th>
+                <Th>Status</Th>
+                <Th>Quote amount</Th>
+              </THead>
+              <tbody>
+                {customer.jobs.map((job) => (
+                  <Tr key={job.id}>
+                    <Td className="font-medium">
+                      <Link href={`/jobs/${job.id}`} className="text-blue-600 hover:underline">
+                        {job.jobNumber}
+                      </Link>
+                    </Td>
+                    <Td>{job.description}</Td>
+                    <Td>
+                      <JobStatusBadge status={job.status} />
+                    </Td>
+                    <Td>{formatCurrency(job.quoteAmount)}</Td>
+                  </Tr>
+                ))}
+                {customer.jobs.length === 0 && <EmptyRow colSpan={4}>No jobs yet.</EmptyRow>}
+              </tbody>
+            </Table>
             <Link href={`/jobs/new?customerId=${customerId}`} className="mt-4 inline-block text-sm font-medium text-blue-600 hover:underline">
               + New job for this customer
             </Link>
@@ -120,30 +111,26 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
 
           {customer.enquiries.length > 0 && (
             <Card title="Enquiries">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
-                  <thead>
-                    <tr className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">
-                      <th className="py-2 pr-4">Date</th>
-                      <th className="py-2 pr-4">Work requested</th>
-                      <th className="py-2 pr-4">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {customer.enquiries.map((e) => (
-                      <tr key={e.id} className="border-b border-slate-50 last:border-0 dark:border-slate-800/60">
-                        <td className="py-2 pr-4">{formatDate(e.createdAt)}</td>
-                        <td className="py-2 pr-4">
-                          <Link href={`/enquiries/${e.id}`} className="text-blue-600 hover:underline">
-                            {e.workRequested}
-                          </Link>
-                        </td>
-                        <td className="py-2 pr-4">{ENQUIRY_STATUS_LABELS[e.status as keyof typeof ENQUIRY_STATUS_LABELS] ?? e.status}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <Table>
+                <THead>
+                  <Th>Date</Th>
+                  <Th>Work requested</Th>
+                  <Th>Status</Th>
+                </THead>
+                <tbody>
+                  {customer.enquiries.map((e) => (
+                    <Tr key={e.id}>
+                      <Td>{formatDate(e.createdAt)}</Td>
+                      <Td>
+                        <Link href={`/enquiries/${e.id}`} className="text-blue-600 hover:underline">
+                          {e.workRequested}
+                        </Link>
+                      </Td>
+                      <Td>{ENQUIRY_STATUS_LABELS[e.status as keyof typeof ENQUIRY_STATUS_LABELS] ?? e.status}</Td>
+                    </Tr>
+                  ))}
+                </tbody>
+              </Table>
             </Card>
           )}
         </div>

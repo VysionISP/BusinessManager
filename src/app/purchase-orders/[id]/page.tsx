@@ -4,6 +4,7 @@ import { Card } from "@/components/Card";
 import { PageHeader } from "@/components/PageHeader";
 import { Button, FormField } from "@/components/FormField";
 import { TrafficBadge } from "@/components/Badge";
+import { Table, Td, Th, THead, Tr } from "@/components/Table";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { purchaseOrderTotal } from "@/lib/calculations";
 import { PO_STATUSES, PO_STATUS_LABELS, SUPPLIER_INVOICE_CATEGORIES } from "@/lib/types";
@@ -57,34 +58,32 @@ export default async function PurchaseOrderDetailPage({ params }: { params: Prom
                 </button>
               </form>
             </div>
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">
-                  <th className="py-2 pr-4">Description</th>
-                  <th className="py-2 pr-4">Qty</th>
-                  <th className="py-2 pr-4">Unit cost</th>
-                  <th className="py-2 pr-4">Total</th>
-                  <th className="py-2 pr-4" />
-                </tr>
-              </thead>
+            <Table>
+              <THead>
+                <Th>Description</Th>
+                <Th>Qty</Th>
+                <Th>Unit cost</Th>
+                <Th>Total</Th>
+                <Th />
+              </THead>
               <tbody>
                 {po.lines.map((line) => (
-                  <tr key={line.id} className="border-b border-slate-50 last:border-0 dark:border-slate-800/60">
-                    <td className="py-2 pr-4">{line.description}</td>
-                    <td className="py-2 pr-4">{line.quantity}</td>
-                    <td className="py-2 pr-4">{formatCurrency(line.unitCost, true)}</td>
-                    <td className="py-2 pr-4 font-medium">{formatCurrency(line.quantity * line.unitCost)}</td>
-                    <td className="py-2 pr-4 text-right">
+                  <Tr key={line.id}>
+                    <Td>{line.description}</Td>
+                    <Td>{line.quantity}</Td>
+                    <Td>{formatCurrency(line.unitCost, true)}</Td>
+                    <Td className="font-medium">{formatCurrency(line.quantity * line.unitCost)}</Td>
+                    <Td className="text-right">
                       <form action={deletePoLine.bind(null, poId, po.jobId, line.id)}>
                         <button type="submit" className="text-xs text-rose-600 hover:underline">
                           Delete
                         </button>
                       </form>
-                    </td>
-                  </tr>
+                    </Td>
+                  </Tr>
                 ))}
               </tbody>
-            </table>
+            </Table>
             <div className="mt-4 border-t border-slate-100 pt-3 text-right text-sm font-semibold dark:border-slate-800">Total: {formatCurrency(total)}</div>
           </Card>
 

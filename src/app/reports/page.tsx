@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Card } from "@/components/Card";
 import { PageHeader } from "@/components/PageHeader";
 import { JobStatusBadge, TrafficBadge } from "@/components/Badge";
+import { Avatar, EmptyRow, Table, Td, Th, THead, Tr } from "@/components/Table";
 import { formatCurrency, formatHours, formatPercent } from "@/lib/format";
 import { getReportsData, getSalesAndPurchasingStats } from "@/lib/queries";
 
@@ -21,53 +22,43 @@ export default async function ReportsPage() {
 
       <div className="space-y-5">
         <Card title="Job profitability — most to least profitable">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">
-                  <th className="py-2 pr-4">Job</th>
-                  <th className="py-2 pr-4">Status</th>
-                  <th className="py-2 pr-4">Revenue</th>
-                  <th className="py-2 pr-4">Labour</th>
-                  <th className="py-2 pr-4">Materials</th>
-                  <th className="py-2 pr-4">Subs</th>
-                  <th className="py-2 pr-4">Total cost</th>
-                  <th className="py-2 pr-4">Gross profit</th>
-                  <th className="py-2 pr-4">Margin</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rankedJobs.map((jf) => (
-                  <tr key={jf.job.id} className="border-b border-slate-50 last:border-0 dark:border-slate-800/60">
-                    <td className="py-2 pr-4 font-medium">
-                      <Link href={`/jobs/${jf.job.id}`} className="text-blue-600 hover:underline">
-                        {jf.job.jobNumber}
-                      </Link>
-                    </td>
-                    <td className="py-2 pr-4">
-                      <JobStatusBadge status={jf.job.status} />
-                    </td>
-                    <td className="py-2 pr-4">{formatCurrency(jf.job.quoteAmount)}</td>
-                    <td className="py-2 pr-4">{formatCurrency(jf.actual.labour)}</td>
-                    <td className="py-2 pr-4">{formatCurrency(jf.actual.materials)}</td>
-                    <td className="py-2 pr-4">{formatCurrency(jf.actual.subcontractor)}</td>
-                    <td className="py-2 pr-4">{formatCurrency(jf.forecast.forecastFinalCost)}</td>
-                    <td className="py-2 pr-4">{formatCurrency(jf.forecast.forecastProfit)}</td>
-                    <td className="py-2 pr-4">
-                      <TrafficBadge severity={jf.belowTargetMargin ? "red" : "green"} label={formatPercent(jf.forecast.forecastMarginPercent, 1)} />
-                    </td>
-                  </tr>
-                ))}
-                {rankedJobs.length === 0 && (
-                  <tr>
-                    <td colSpan={9} className="py-6 text-center text-slate-400">
-                      No jobs to report on yet.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+          <Table>
+            <THead>
+              <Th>Job</Th>
+              <Th>Status</Th>
+              <Th>Revenue</Th>
+              <Th>Labour</Th>
+              <Th>Materials</Th>
+              <Th>Subs</Th>
+              <Th>Total cost</Th>
+              <Th>Gross profit</Th>
+              <Th>Margin</Th>
+            </THead>
+            <tbody>
+              {rankedJobs.map((jf) => (
+                <Tr key={jf.job.id}>
+                  <Td className="font-medium">
+                    <Link href={`/jobs/${jf.job.id}`} className="text-blue-600 hover:underline">
+                      {jf.job.jobNumber}
+                    </Link>
+                  </Td>
+                  <Td>
+                    <JobStatusBadge status={jf.job.status} />
+                  </Td>
+                  <Td>{formatCurrency(jf.job.quoteAmount)}</Td>
+                  <Td>{formatCurrency(jf.actual.labour)}</Td>
+                  <Td>{formatCurrency(jf.actual.materials)}</Td>
+                  <Td>{formatCurrency(jf.actual.subcontractor)}</Td>
+                  <Td>{formatCurrency(jf.forecast.forecastFinalCost)}</Td>
+                  <Td>{formatCurrency(jf.forecast.forecastProfit)}</Td>
+                  <Td>
+                    <TrafficBadge severity={jf.belowTargetMargin ? "red" : "green"} label={formatPercent(jf.forecast.forecastMarginPercent, 1)} />
+                  </Td>
+                </Tr>
+              ))}
+              {rankedJobs.length === 0 && <EmptyRow colSpan={9}>No jobs to report on yet.</EmptyRow>}
+            </tbody>
+          </Table>
         </Card>
 
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
@@ -92,37 +83,32 @@ export default async function ReportsPage() {
           </Card>
 
           <Card title="Employee productivity (last 4 payroll weeks recorded)">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead>
-                  <tr className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">
-                    <th className="py-2 pr-3">Employee</th>
-                    <th className="py-2 pr-3">Paid hrs</th>
-                    <th className="py-2 pr-3">Billable</th>
-                    <th className="py-2 pr-3">Utilisation</th>
-                    <th className="py-2 pr-3">GP contribution</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.employeeProductivity.map((row) => (
-                    <tr key={row.id} className="border-b border-slate-50 last:border-0 dark:border-slate-800/60">
-                      <td className="py-2 pr-3 font-medium">{row.name}</td>
-                      <td className="py-2 pr-3">{formatHours(row.paidHours)}</td>
-                      <td className="py-2 pr-3">{formatHours(row.billableHours)}</td>
-                      <td className="py-2 pr-3">{formatPercent(row.utilisationPercent)}</td>
-                      <td className="py-2 pr-3">{formatCurrency(row.grossProfitContribution)}</td>
-                    </tr>
-                  ))}
-                  {data.employeeProductivity.length === 0 && (
-                    <tr>
-                      <td colSpan={5} className="py-4 text-center text-slate-400">
-                        No payroll history recorded yet.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+            <Table>
+              <THead>
+                <Th>Employee</Th>
+                <Th>Paid hrs</Th>
+                <Th>Billable</Th>
+                <Th>Utilisation</Th>
+                <Th>GP contribution</Th>
+              </THead>
+              <tbody>
+                {data.employeeProductivity.map((row) => (
+                  <Tr key={row.id}>
+                    <Td className="font-medium">
+                      <div className="flex items-center gap-2.5">
+                        <Avatar name={row.name} />
+                        {row.name}
+                      </div>
+                    </Td>
+                    <Td>{formatHours(row.paidHours)}</Td>
+                    <Td>{formatHours(row.billableHours)}</Td>
+                    <Td>{formatPercent(row.utilisationPercent)}</Td>
+                    <Td>{formatCurrency(row.grossProfitContribution)}</Td>
+                  </Tr>
+                ))}
+                {data.employeeProductivity.length === 0 && <EmptyRow colSpan={5}>No payroll history recorded yet.</EmptyRow>}
+              </tbody>
+            </Table>
           </Card>
         </div>
 

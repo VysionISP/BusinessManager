@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { Nav } from "@/components/Nav";
+import { AppShell } from "@/components/AppShell";
+import { getSettings } from "@/lib/queries";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -18,15 +19,16 @@ export const metadata: Metadata = {
   description: "What the business costs to run, what to charge, and whether jobs are actually making money.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const settings = await getSettings();
+
   return (
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-50">
-        <Nav />
-        <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6">{children}</main>
+      <body className="h-full text-slate-900 antialiased dark:text-slate-50">
+        <AppShell businessName={settings.businessName}>{children}</AppShell>
       </body>
     </html>
   );

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Card } from "@/components/Card";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/FormField";
+import { Table, Td, Th, THead, Tr } from "@/components/Table";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { prisma } from "@/lib/db";
 import { ENQUIRY_STATUSES, ENQUIRY_STATUS_LABELS } from "@/lib/types";
@@ -70,32 +71,28 @@ export default async function EnquiriesPage() {
       {closedOut.length > 0 && (
         <div className="mt-5">
           <Card title="Converted / lost / no response">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead>
-                  <tr className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">
-                    <th className="py-2 pr-4">Date</th>
-                    <th className="py-2 pr-4">Customer</th>
-                    <th className="py-2 pr-4">Work requested</th>
-                    <th className="py-2 pr-4">Outcome</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {closedOut.map((e) => (
-                    <tr key={e.id} className="border-b border-slate-50 last:border-0 dark:border-slate-800/60">
-                      <td className="py-2 pr-4">{formatDate(e.createdAt)}</td>
-                      <td className="py-2 pr-4">
-                        <Link href={`/enquiries/${e.id}`} className="text-blue-600 hover:underline">
-                          {e.customer?.name ?? e.contactName ?? "—"}
-                        </Link>
-                      </td>
-                      <td className="py-2 pr-4">{e.workRequested}</td>
-                      <td className="py-2 pr-4">{ENQUIRY_STATUS_LABELS[e.status as keyof typeof ENQUIRY_STATUS_LABELS] ?? e.status}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <Table>
+              <THead>
+                <Th>Date</Th>
+                <Th>Customer</Th>
+                <Th>Work requested</Th>
+                <Th>Outcome</Th>
+              </THead>
+              <tbody>
+                {closedOut.map((e) => (
+                  <Tr key={e.id}>
+                    <Td>{formatDate(e.createdAt)}</Td>
+                    <Td>
+                      <Link href={`/enquiries/${e.id}`} className="text-blue-600 hover:underline">
+                        {e.customer?.name ?? e.contactName ?? "—"}
+                      </Link>
+                    </Td>
+                    <Td>{e.workRequested}</Td>
+                    <Td>{ENQUIRY_STATUS_LABELS[e.status as keyof typeof ENQUIRY_STATUS_LABELS] ?? e.status}</Td>
+                  </Tr>
+                ))}
+              </tbody>
+            </Table>
           </Card>
         </div>
       )}

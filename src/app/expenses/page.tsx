@@ -1,6 +1,7 @@
 import { Card } from "@/components/Card";
 import { PageHeader } from "@/components/PageHeader";
 import { FormField } from "@/components/FormField";
+import { EmptyRow, Table, Td, Th, THead, Tr } from "@/components/Table";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { prisma } from "@/lib/db";
 import { OVERHEAD_CATEGORIES, OVERHEAD_CATEGORY_LABELS } from "@/lib/types";
@@ -43,45 +44,35 @@ export default async function ExpensesPage() {
 
       <div className="mt-5">
         <Card title="Expense history">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">
-                  <th className="py-2 pr-4">Date</th>
-                  <th className="py-2 pr-4">Category</th>
-                  <th className="py-2 pr-4">Description</th>
-                  <th className="py-2 pr-4">Amount</th>
-                  <th className="py-2 pr-4" />
-                </tr>
-              </thead>
-              <tbody>
-                {expenses.map((e) => (
-                  <tr key={e.id} className="border-b border-slate-50 last:border-0 dark:border-slate-800/60">
-                    <td className="py-2 pr-4">{formatDate(e.date)}</td>
-                    <td className="py-2 pr-4 text-slate-500 dark:text-slate-400">
-                      {OVERHEAD_CATEGORY_LABELS[e.category as keyof typeof OVERHEAD_CATEGORY_LABELS] ?? e.category}
-                    </td>
-                    <td className="py-2 pr-4">{e.description}</td>
-                    <td className="py-2 pr-4">{formatCurrency(e.amount, true)}</td>
-                    <td className="py-2 pr-4 text-right">
-                      <form action={deleteExpense.bind(null, e.id)}>
-                        <button type="submit" className="text-xs text-rose-600 hover:underline">
-                          Delete
-                        </button>
-                      </form>
-                    </td>
-                  </tr>
-                ))}
-                {expenses.length === 0 && (
-                  <tr>
-                    <td colSpan={5} className="py-6 text-center text-slate-400">
-                      No expenses recorded yet.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+          <Table>
+            <THead>
+              <Th>Date</Th>
+              <Th>Category</Th>
+              <Th>Description</Th>
+              <Th>Amount</Th>
+              <Th />
+            </THead>
+            <tbody>
+              {expenses.map((e) => (
+                <Tr key={e.id}>
+                  <Td>{formatDate(e.date)}</Td>
+                  <Td className="text-slate-500 dark:text-slate-400">
+                    {OVERHEAD_CATEGORY_LABELS[e.category as keyof typeof OVERHEAD_CATEGORY_LABELS] ?? e.category}
+                  </Td>
+                  <Td>{e.description}</Td>
+                  <Td>{formatCurrency(e.amount, true)}</Td>
+                  <Td className="text-right">
+                    <form action={deleteExpense.bind(null, e.id)}>
+                      <button type="submit" className="text-xs text-rose-600 hover:underline">
+                        Delete
+                      </button>
+                    </form>
+                  </Td>
+                </Tr>
+              ))}
+              {expenses.length === 0 && <EmptyRow colSpan={5}>No expenses recorded yet.</EmptyRow>}
+            </tbody>
+          </Table>
         </Card>
       </div>
 

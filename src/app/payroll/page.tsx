@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Card } from "@/components/Card";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/FormField";
+import { Avatar, EmptyRow, Table, Td, Th, THead, Tr } from "@/components/Table";
 import { payrollEntryCost, weeklyPayrollSummary } from "@/lib/calculations";
 import { addDays, formatWeekLabel, mondayOfWeek } from "@/lib/dates";
 import { formatCurrency, toDateInputValue } from "@/lib/format";
@@ -72,64 +73,59 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
 
       <form action={boundSave}>
         <Card>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">
-                  <th className="py-2 pr-3">Employee</th>
-                  <th className="py-2 pr-3">Ordinary</th>
-                  <th className="py-2 pr-3">Overtime</th>
-                  <th className="py-2 pr-3">Allowances $</th>
-                  <th className="py-2 pr-3">Leave</th>
-                  <th className="py-2 pr-3">Sick</th>
-                  <th className="py-2 pr-3">Non-billable</th>
-                  <th className="py-2 pr-3">Billable</th>
-                  <th className="py-2 pr-3">Total cost</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map(({ employee, entry }) => {
-                  const cost = payrollEntryCost(employee, entry);
-                  const inputClass =
-                    "w-20 rounded-md border border-slate-300 bg-white px-2 py-1 text-sm dark:border-slate-700 dark:bg-slate-800";
-                  return (
-                    <tr key={employee.id} className="border-b border-slate-50 last:border-0 dark:border-slate-800/60">
-                      <td className="py-2 pr-3 font-medium">{employee.name}</td>
-                      <td className="py-2 pr-3">
-                        <input type="number" step="0.5" name={`ordinaryHours_${employee.id}`} defaultValue={entry.ordinaryHours} className={inputClass} />
-                      </td>
-                      <td className="py-2 pr-3">
-                        <input type="number" step="0.5" name={`overtimeHours_${employee.id}`} defaultValue={entry.overtimeHours} className={inputClass} />
-                      </td>
-                      <td className="py-2 pr-3">
-                        <input type="number" step="0.01" name={`allowances_${employee.id}`} defaultValue={entry.allowances} className={inputClass} />
-                      </td>
-                      <td className="py-2 pr-3">
-                        <input type="number" step="0.5" name={`leaveHours_${employee.id}`} defaultValue={entry.leaveHours} className={inputClass} />
-                      </td>
-                      <td className="py-2 pr-3">
-                        <input type="number" step="0.5" name={`sickHours_${employee.id}`} defaultValue={entry.sickHours} className={inputClass} />
-                      </td>
-                      <td className="py-2 pr-3">
-                        <input type="number" step="0.5" name={`nonBillableHours_${employee.id}`} defaultValue={entry.nonBillableHours} className={inputClass} />
-                      </td>
-                      <td className="py-2 pr-3">
-                        <input type="number" step="0.5" name={`billableHours_${employee.id}`} defaultValue={entry.billableHours} className={inputClass} />
-                      </td>
-                      <td className="py-2 pr-3 font-medium">{formatCurrency(cost.totalCost)}</td>
-                    </tr>
-                  );
-                })}
-                {rows.length === 0 && (
-                  <tr>
-                    <td colSpan={9} className="py-6 text-center text-slate-400">
-                      No active employees.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+          <Table>
+            <THead>
+              <Th>Employee</Th>
+              <Th>Ordinary</Th>
+              <Th>Overtime</Th>
+              <Th>Allowances $</Th>
+              <Th>Leave</Th>
+              <Th>Sick</Th>
+              <Th>Non-billable</Th>
+              <Th>Billable</Th>
+              <Th>Total cost</Th>
+            </THead>
+            <tbody>
+              {rows.map(({ employee, entry }) => {
+                const cost = payrollEntryCost(employee, entry);
+                const inputClass =
+                  "w-20 rounded-md border border-slate-300 bg-white px-2 py-1 text-sm dark:border-slate-700 dark:bg-slate-800";
+                return (
+                  <Tr key={employee.id}>
+                    <Td className="font-medium">
+                      <div className="flex items-center gap-2.5">
+                        <Avatar name={employee.name} />
+                        {employee.name}
+                      </div>
+                    </Td>
+                    <Td>
+                      <input type="number" step="0.5" name={`ordinaryHours_${employee.id}`} defaultValue={entry.ordinaryHours} className={inputClass} />
+                    </Td>
+                    <Td>
+                      <input type="number" step="0.5" name={`overtimeHours_${employee.id}`} defaultValue={entry.overtimeHours} className={inputClass} />
+                    </Td>
+                    <Td>
+                      <input type="number" step="0.01" name={`allowances_${employee.id}`} defaultValue={entry.allowances} className={inputClass} />
+                    </Td>
+                    <Td>
+                      <input type="number" step="0.5" name={`leaveHours_${employee.id}`} defaultValue={entry.leaveHours} className={inputClass} />
+                    </Td>
+                    <Td>
+                      <input type="number" step="0.5" name={`sickHours_${employee.id}`} defaultValue={entry.sickHours} className={inputClass} />
+                    </Td>
+                    <Td>
+                      <input type="number" step="0.5" name={`nonBillableHours_${employee.id}`} defaultValue={entry.nonBillableHours} className={inputClass} />
+                    </Td>
+                    <Td>
+                      <input type="number" step="0.5" name={`billableHours_${employee.id}`} defaultValue={entry.billableHours} className={inputClass} />
+                    </Td>
+                    <Td className="font-medium">{formatCurrency(cost.totalCost)}</Td>
+                  </Tr>
+                );
+              })}
+              {rows.length === 0 && <EmptyRow colSpan={9}>No active employees.</EmptyRow>}
+            </tbody>
+          </Table>
           <div className="mt-4">
             <Button>Save week</Button>
           </div>

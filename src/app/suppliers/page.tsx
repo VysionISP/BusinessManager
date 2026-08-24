@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Card } from "@/components/Card";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/FormField";
+import { Avatar, EmptyRow, Table, Td, Th, THead, Tr } from "@/components/Table";
 import { prisma } from "@/lib/db";
 import { deleteSupplier } from "./actions";
 
@@ -25,52 +26,47 @@ export default async function SuppliersPage() {
         }
       />
       <Card>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">
-                <th className="py-2 pr-4">Name</th>
-                <th className="py-2 pr-4">Contact</th>
-                <th className="py-2 pr-4">Terms</th>
-                <th className="py-2 pr-4">POs</th>
-                <th className="py-2 pr-4">Invoices</th>
-                <th className="py-2 pr-4">Status</th>
-                <th className="py-2 pr-4" />
-              </tr>
-            </thead>
-            <tbody>
-              {suppliers.map((s) => (
-                <tr key={s.id} className="border-b border-slate-50 last:border-0 dark:border-slate-800/60">
-                  <td className="py-2 pr-4 font-medium">{s.name}</td>
-                  <td className="py-2 pr-4 text-slate-500 dark:text-slate-400">{s.contactName ?? s.phone ?? s.email ?? "—"}</td>
-                  <td className="py-2 pr-4">{s.paymentTermsDays} days</td>
-                  <td className="py-2 pr-4">{s._count.purchaseOrders}</td>
-                  <td className="py-2 pr-4">{s._count.supplierInvoices}</td>
-                  <td className="py-2 pr-4">{s.active ? <span className="text-emerald-600">Active</span> : <span className="text-slate-400">Inactive</span>}</td>
-                  <td className="py-2 pr-4 text-right">
-                    <div className="flex justify-end gap-3">
-                      <Link href={`/suppliers/${s.id}/edit`} className="text-blue-600 hover:underline">
-                        Edit
-                      </Link>
-                      <form action={deleteSupplier.bind(null, s.id)}>
-                        <button type="submit" className="text-rose-600 hover:underline">
-                          Delete
-                        </button>
-                      </form>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {suppliers.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="py-6 text-center text-slate-400">
-                    No suppliers yet.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        <Table>
+          <THead>
+            <Th>Name</Th>
+            <Th>Contact</Th>
+            <Th>Terms</Th>
+            <Th>POs</Th>
+            <Th>Invoices</Th>
+            <Th>Status</Th>
+            <Th />
+          </THead>
+          <tbody>
+            {suppliers.map((s) => (
+              <Tr key={s.id}>
+                <Td className="font-medium">
+                  <div className="flex items-center gap-2.5">
+                    <Avatar name={s.name} />
+                    {s.name}
+                  </div>
+                </Td>
+                <Td className="text-slate-500 dark:text-slate-400">{s.contactName ?? s.phone ?? s.email ?? "—"}</Td>
+                <Td>{s.paymentTermsDays} days</Td>
+                <Td>{s._count.purchaseOrders}</Td>
+                <Td>{s._count.supplierInvoices}</Td>
+                <Td>{s.active ? <span className="text-emerald-600">Active</span> : <span className="text-slate-400">Inactive</span>}</Td>
+                <Td className="text-right">
+                  <div className="flex justify-end gap-3">
+                    <Link href={`/suppliers/${s.id}/edit`} className="text-blue-600 hover:underline">
+                      Edit
+                    </Link>
+                    <form action={deleteSupplier.bind(null, s.id)}>
+                      <button type="submit" className="text-rose-600 hover:underline">
+                        Delete
+                      </button>
+                    </form>
+                  </div>
+                </Td>
+              </Tr>
+            ))}
+            {suppliers.length === 0 && <EmptyRow colSpan={7}>No suppliers yet.</EmptyRow>}
+          </tbody>
+        </Table>
       </Card>
     </div>
   );

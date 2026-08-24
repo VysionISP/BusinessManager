@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Card } from "@/components/Card";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/FormField";
+import { Avatar, EmptyRow, Table, Td, Th, THead, Tr } from "@/components/Table";
 import { employeeTrueCost } from "@/lib/calculations";
 import { formatCurrency, formatHours } from "@/lib/format";
 import { getEmployees } from "@/lib/queries";
@@ -25,79 +26,68 @@ export default async function EmployeesPage() {
       />
 
       <Card>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">
-                <th className="py-2 pr-4">Name</th>
-                <th className="py-2 pr-4">Role</th>
-                <th className="py-2 pr-4">Type</th>
-                <th className="py-2 pr-4">Billable hrs/wk</th>
-                <th className="py-2 pr-4">True weekly cost</th>
-                <th className="py-2 pr-4">Cost / billable hr</th>
-                <th className="py-2 pr-4">Charge-out rate</th>
-                <th className="py-2 pr-4">Status</th>
-                <th className="py-2 pr-4" />
-              </tr>
-            </thead>
-            <tbody>
-              {employees.map((e) => {
-                const cost = employeeTrueCost(e);
-                const margin = e.chargeOutRate - cost.costPerBillableHour;
-                return (
-                  <tr key={e.id} className="border-b border-slate-50 last:border-0 dark:border-slate-800/60">
-                    <td className="py-2 pr-4 font-medium">{e.name}</td>
-                    <td className="py-2 pr-4 text-slate-600 dark:text-slate-300">{e.role}</td>
-                    <td className="py-2 pr-4 text-slate-500 dark:text-slate-400">
-                      {e.employeeType === "EMPLOYEE" ? "Employee" : "Subcontractor"} · {e.payType === "HOURLY" ? "Hourly" : "Salary"}
-                    </td>
-                    <td className="py-2 pr-4">{formatHours(e.expectedBillableHoursPerWeek)}</td>
-                    <td className="py-2 pr-4">{formatCurrency(cost.totalCost)}</td>
-                    <td className="py-2 pr-4">{formatCurrency(cost.costPerBillableHour, true)}</td>
-                    <td className="py-2 pr-4">
-                      {formatCurrency(e.chargeOutRate, true)}{" "}
-                      <span className={margin >= 0 ? "text-emerald-600" : "text-rose-600"}>
-                        ({margin >= 0 ? "+" : ""}
-                        {formatCurrency(margin, true)})
-                      </span>
-                    </td>
-                    <td className="py-2 pr-4">
-                      {e.active ? (
-                        <span className="text-emerald-600">Active</span>
-                      ) : (
-                        <span className="text-slate-400">Inactive</span>
-                      )}
-                    </td>
-                    <td className="py-2 pr-4 text-right">
-                      <div className="flex justify-end gap-3">
-                        <Link href={`/employees/${e.id}/edit`} className="text-blue-600 hover:underline">
-                          Edit
-                        </Link>
-                        <form
-                          action={async () => {
-                            "use server";
-                            await deleteEmployee(e.id);
-                          }}
-                        >
-                          <button type="submit" className="text-rose-600 hover:underline">
-                            Delete
-                          </button>
-                        </form>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-              {employees.length === 0 && (
-                <tr>
-                  <td colSpan={9} className="py-6 text-center text-slate-400">
-                    No employees yet.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        <Table>
+          <THead>
+            <Th>Name</Th>
+            <Th>Role</Th>
+            <Th>Type</Th>
+            <Th>Billable hrs/wk</Th>
+            <Th>True weekly cost</Th>
+            <Th>Cost / billable hr</Th>
+            <Th>Charge-out rate</Th>
+            <Th>Status</Th>
+            <Th />
+          </THead>
+          <tbody>
+            {employees.map((e) => {
+              const cost = employeeTrueCost(e);
+              const margin = e.chargeOutRate - cost.costPerBillableHour;
+              return (
+                <Tr key={e.id}>
+                  <Td className="font-medium">
+                    <div className="flex items-center gap-2.5">
+                      <Avatar name={e.name} />
+                      {e.name}
+                    </div>
+                  </Td>
+                  <Td className="text-slate-600 dark:text-slate-300">{e.role}</Td>
+                  <Td className="text-slate-500 dark:text-slate-400">
+                    {e.employeeType === "EMPLOYEE" ? "Employee" : "Subcontractor"} · {e.payType === "HOURLY" ? "Hourly" : "Salary"}
+                  </Td>
+                  <Td>{formatHours(e.expectedBillableHoursPerWeek)}</Td>
+                  <Td>{formatCurrency(cost.totalCost)}</Td>
+                  <Td>{formatCurrency(cost.costPerBillableHour, true)}</Td>
+                  <Td>
+                    {formatCurrency(e.chargeOutRate, true)}{" "}
+                    <span className={margin >= 0 ? "text-emerald-600" : "text-rose-600"}>
+                      ({margin >= 0 ? "+" : ""}
+                      {formatCurrency(margin, true)})
+                    </span>
+                  </Td>
+                  <Td>{e.active ? <span className="text-emerald-600">Active</span> : <span className="text-slate-400">Inactive</span>}</Td>
+                  <Td className="text-right">
+                    <div className="flex justify-end gap-3">
+                      <Link href={`/employees/${e.id}/edit`} className="text-blue-600 hover:underline">
+                        Edit
+                      </Link>
+                      <form
+                        action={async () => {
+                          "use server";
+                          await deleteEmployee(e.id);
+                        }}
+                      >
+                        <button type="submit" className="text-rose-600 hover:underline">
+                          Delete
+                        </button>
+                      </form>
+                    </div>
+                  </Td>
+                </Tr>
+              );
+            })}
+            {employees.length === 0 && <EmptyRow colSpan={9}>No employees yet.</EmptyRow>}
+          </tbody>
+        </Table>
       </Card>
     </div>
   );

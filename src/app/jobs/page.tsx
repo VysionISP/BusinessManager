@@ -3,6 +3,7 @@ import { Card } from "@/components/Card";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/FormField";
 import { JobStatusBadge, TrafficBadge } from "@/components/Badge";
+import { Avatar, EmptyRow, Table, Td, Th, THead, Tr } from "@/components/Table";
 import { formatCurrency, formatPercent } from "@/lib/format";
 import { getJobsWithFinancials } from "@/lib/queries";
 
@@ -51,61 +52,56 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
       />
 
       <Card>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">
-                <th className="py-2 pr-4">Job</th>
-                <th className="py-2 pr-4">Customer</th>
-                <th className="py-2 pr-4">Status</th>
-                <th className="py-2 pr-4">{sortLink("value", sortKey, sortDir, "Contract value")}</th>
-                <th className="py-2 pr-4">{sortLink("margin", sortKey, sortDir, "Forecast margin")}</th>
-                <th className="py-2 pr-4">WIP</th>
-                <th className="py-2 pr-4">{sortLink("cash", sortKey, sortDir, "Cash position")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sorted.map((jf) => (
-                <tr key={jf.job.id} className="border-b border-slate-50 last:border-0 dark:border-slate-800/60">
-                  <td className="py-2 pr-4 font-medium">
-                    <Link href={`/jobs/${jf.job.id}`} className="text-blue-600 hover:underline">
-                      {jf.job.jobNumber}
-                    </Link>
-                  </td>
-                  <td className="py-2 pr-4">
-                    <Link href={`/customers/${jf.job.customerId}`} className="hover:underline">
-                      {jf.job.customer.name}
-                    </Link>
-                    {jf.job.site && <span className="block text-xs text-slate-400">{jf.job.site.name}</span>}
-                  </td>
-                  <td className="py-2 pr-4">
-                    <JobStatusBadge status={jf.job.status} />
-                  </td>
-                  <td className="py-2 pr-4">
-                    {formatCurrency(jf.revisedContractValue)}
-                    {jf.approvedVariationsTotal !== 0 && (
-                      <span className="block text-xs text-slate-400">incl. {formatCurrency(jf.approvedVariationsTotal)} variations</span>
-                    )}
-                  </td>
-                  <td className="py-2 pr-4">
-                    <TrafficBadge severity={jf.belowTargetMargin ? "red" : "green"} label={formatPercent(jf.forecast.forecastMarginPercent, 1)} />
-                  </td>
-                  <td className="py-2 pr-4">{formatCurrency(jf.wip.managementWip)}</td>
-                  <td className="py-2 pr-4">
-                    <TrafficBadge severity={jf.heavyCashFunding ? "red" : jf.cash.cashPosition < 0 ? "orange" : "green"} label={formatCurrency(jf.cash.cashPosition)} />
-                  </td>
-                </tr>
-              ))}
-              {sorted.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="py-6 text-center text-slate-400">
-                    No jobs yet.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        <Table>
+          <THead>
+            <Th>Job</Th>
+            <Th>Customer</Th>
+            <Th>Status</Th>
+            <Th>{sortLink("value", sortKey, sortDir, "Contract value")}</Th>
+            <Th>{sortLink("margin", sortKey, sortDir, "Forecast margin")}</Th>
+            <Th>WIP</Th>
+            <Th>{sortLink("cash", sortKey, sortDir, "Cash position")}</Th>
+          </THead>
+          <tbody>
+            {sorted.map((jf) => (
+              <Tr key={jf.job.id}>
+                <Td className="font-medium">
+                  <Link href={`/jobs/${jf.job.id}`} className="text-blue-600 hover:underline">
+                    {jf.job.jobNumber}
+                  </Link>
+                </Td>
+                <Td>
+                  <div className="flex items-center gap-2.5">
+                    <Avatar name={jf.job.customer.name} />
+                    <div>
+                      <Link href={`/customers/${jf.job.customerId}`} className="font-medium hover:underline">
+                        {jf.job.customer.name}
+                      </Link>
+                      {jf.job.site && <span className="block text-xs text-slate-400">{jf.job.site.name}</span>}
+                    </div>
+                  </div>
+                </Td>
+                <Td>
+                  <JobStatusBadge status={jf.job.status} />
+                </Td>
+                <Td>
+                  {formatCurrency(jf.revisedContractValue)}
+                  {jf.approvedVariationsTotal !== 0 && (
+                    <span className="block text-xs text-slate-400">incl. {formatCurrency(jf.approvedVariationsTotal)} variations</span>
+                  )}
+                </Td>
+                <Td>
+                  <TrafficBadge severity={jf.belowTargetMargin ? "red" : "green"} label={formatPercent(jf.forecast.forecastMarginPercent, 1)} />
+                </Td>
+                <Td>{formatCurrency(jf.wip.managementWip)}</Td>
+                <Td>
+                  <TrafficBadge severity={jf.heavyCashFunding ? "red" : jf.cash.cashPosition < 0 ? "orange" : "green"} label={formatCurrency(jf.cash.cashPosition)} />
+                </Td>
+              </Tr>
+            ))}
+            {sorted.length === 0 && <EmptyRow colSpan={7}>No jobs yet.</EmptyRow>}
+          </tbody>
+        </Table>
       </Card>
     </div>
   );

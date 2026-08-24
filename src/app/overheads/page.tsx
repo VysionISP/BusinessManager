@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Card } from "@/components/Card";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/FormField";
+import { Table, Td, Th, THead, Tr } from "@/components/Table";
 import { overheadAnnualEquivalent, overheadMonthlyEquivalent, overheadWeeklyEquivalent, totalWeeklyOverheads } from "@/lib/calculations";
 import { formatCurrency } from "@/lib/format";
 import { getOverheads } from "@/lib/queries";
@@ -39,52 +40,48 @@ export default async function OverheadsPage() {
           if (items.length === 0) return null;
           return (
             <Card key={category} title={OVERHEAD_CATEGORY_LABELS[category]}>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
-                  <thead>
-                    <tr className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">
-                      <th className="py-2 pr-4">Expense</th>
-                      <th className="py-2 pr-4">Amount</th>
-                      <th className="py-2 pr-4">Frequency</th>
-                      <th className="py-2 pr-4">Weekly</th>
-                      <th className="py-2 pr-4">Monthly</th>
-                      <th className="py-2 pr-4">Annual</th>
-                      <th className="py-2 pr-4">Status</th>
-                      <th className="py-2 pr-4" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {items.map((o) => (
-                      <tr key={o.id} className="border-b border-slate-50 last:border-0 dark:border-slate-800/60">
-                        <td className="py-2 pr-4 font-medium">{o.name}</td>
-                        <td className="py-2 pr-4">{formatCurrency(o.amount, true)}</td>
-                        <td className="py-2 pr-4 text-slate-500 dark:text-slate-400">{FREQUENCY_LABELS[o.frequency]}</td>
-                        <td className="py-2 pr-4">{formatCurrency(overheadWeeklyEquivalent(o), true)}</td>
-                        <td className="py-2 pr-4">{formatCurrency(overheadMonthlyEquivalent(o), true)}</td>
-                        <td className="py-2 pr-4">{formatCurrency(overheadAnnualEquivalent(o), true)}</td>
-                        <td className="py-2 pr-4">{o.active ? <span className="text-emerald-600">Active</span> : <span className="text-slate-400">Inactive</span>}</td>
-                        <td className="py-2 pr-4 text-right">
-                          <div className="flex justify-end gap-3">
-                            <Link href={`/overheads/${o.id}/edit`} className="text-blue-600 hover:underline">
-                              Edit
-                            </Link>
-                            <form
-                              action={async () => {
-                                "use server";
-                                await deleteOverhead(o.id);
-                              }}
-                            >
-                              <button type="submit" className="text-rose-600 hover:underline">
-                                Delete
-                              </button>
-                            </form>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <Table>
+                <THead>
+                  <Th>Expense</Th>
+                  <Th>Amount</Th>
+                  <Th>Frequency</Th>
+                  <Th>Weekly</Th>
+                  <Th>Monthly</Th>
+                  <Th>Annual</Th>
+                  <Th>Status</Th>
+                  <Th />
+                </THead>
+                <tbody>
+                  {items.map((o) => (
+                    <Tr key={o.id}>
+                      <Td className="font-medium">{o.name}</Td>
+                      <Td>{formatCurrency(o.amount, true)}</Td>
+                      <Td className="text-slate-500 dark:text-slate-400">{FREQUENCY_LABELS[o.frequency]}</Td>
+                      <Td>{formatCurrency(overheadWeeklyEquivalent(o), true)}</Td>
+                      <Td>{formatCurrency(overheadMonthlyEquivalent(o), true)}</Td>
+                      <Td>{formatCurrency(overheadAnnualEquivalent(o), true)}</Td>
+                      <Td>{o.active ? <span className="text-emerald-600">Active</span> : <span className="text-slate-400">Inactive</span>}</Td>
+                      <Td className="text-right">
+                        <div className="flex justify-end gap-3">
+                          <Link href={`/overheads/${o.id}/edit`} className="text-blue-600 hover:underline">
+                            Edit
+                          </Link>
+                          <form
+                            action={async () => {
+                              "use server";
+                              await deleteOverhead(o.id);
+                            }}
+                          >
+                            <button type="submit" className="text-rose-600 hover:underline">
+                              Delete
+                            </button>
+                          </form>
+                        </div>
+                      </Td>
+                    </Tr>
+                  ))}
+                </tbody>
+              </Table>
             </Card>
           );
         })}

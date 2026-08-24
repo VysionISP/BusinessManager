@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Card } from "@/components/Card";
 import { PageHeader } from "@/components/PageHeader";
 import { FormField } from "@/components/FormField";
+import { EmptyRow, Table, Td, Th, THead, Tr } from "@/components/Table";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { formatWeekLabel } from "@/lib/dates";
 import { getCashflowForecast } from "@/lib/queries";
@@ -47,41 +48,34 @@ export default async function CashflowPage({ searchParams }: { searchParams: Pro
       )}
 
       <Card>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">
-                <th className="py-2 pr-4">Week</th>
-                <th className="py-2 pr-4">Opening</th>
-                <th className="py-2 pr-4">Cash in</th>
-                <th className="py-2 pr-4">Wages</th>
-                <th className="py-2 pr-4">Super</th>
-                <th className="py-2 pr-4">Overheads</th>
-                <th className="py-2 pr-4">Other out</th>
-                <th className="py-2 pr-4">Closing</th>
-              </tr>
-            </thead>
-            <tbody>
-              {forecast.map((w, i) => (
-                <tr
-                  key={i}
-                  className={`border-b border-slate-50 last:border-0 dark:border-slate-800/60 ${w.isNegative ? "bg-rose-50 dark:bg-rose-950/20" : ""}`}
-                >
-                  <td className="py-2 pr-4 font-medium">{formatWeekLabel(w.weekStarting)}</td>
-                  <td className="py-2 pr-4">{formatCurrency(w.openingBalance)}</td>
-                  <td className="py-2 pr-4 text-emerald-600">{formatCurrency(w.cashIn.total)}</td>
-                  <td className="py-2 pr-4">{formatCurrency(w.cashOut.wages)}</td>
-                  <td className="py-2 pr-4">{formatCurrency(w.cashOut.super)}</td>
-                  <td className="py-2 pr-4">{formatCurrency(w.cashOut.overheads)}</td>
-                  <td className="py-2 pr-4">{formatCurrency(w.cashOut.other)}</td>
-                  <td className={`py-2 pr-4 font-semibold ${w.isNegative ? "text-rose-600" : "text-slate-900 dark:text-slate-50"}`}>
-                    {formatCurrency(w.closingBalance)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <Table>
+          <THead>
+            <Th>Week</Th>
+            <Th>Opening</Th>
+            <Th>Cash in</Th>
+            <Th>Wages</Th>
+            <Th>Super</Th>
+            <Th>Overheads</Th>
+            <Th>Other out</Th>
+            <Th>Closing</Th>
+          </THead>
+          <tbody>
+            {forecast.map((w, i) => (
+              <Tr key={i} className={w.isNegative ? "bg-rose-50 dark:bg-rose-950/20" : ""}>
+                <Td className="font-medium">{formatWeekLabel(w.weekStarting)}</Td>
+                <Td>{formatCurrency(w.openingBalance)}</Td>
+                <Td className="text-emerald-600">{formatCurrency(w.cashIn.total)}</Td>
+                <Td>{formatCurrency(w.cashOut.wages)}</Td>
+                <Td>{formatCurrency(w.cashOut.super)}</Td>
+                <Td>{formatCurrency(w.cashOut.overheads)}</Td>
+                <Td>{formatCurrency(w.cashOut.other)}</Td>
+                <Td className={`font-semibold ${w.isNegative ? "text-rose-600" : "text-slate-900 dark:text-slate-50"}`}>
+                  {formatCurrency(w.closingBalance)}
+                </Td>
+              </Tr>
+            ))}
+          </tbody>
+        </Table>
       </Card>
 
       <div className="mt-5">
@@ -99,47 +93,37 @@ export default async function CashflowPage({ searchParams }: { searchParams: Pro
             </button>
           </form>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">
-                  <th className="py-2 pr-4">Week</th>
-                  <th className="py-2 pr-4">Direction</th>
-                  <th className="py-2 pr-4">Category</th>
-                  <th className="py-2 pr-4">Description</th>
-                  <th className="py-2 pr-4">Amount</th>
-                  <th className="py-2 pr-4" />
-                </tr>
-              </thead>
-              <tbody>
-                {adjustments.map((a) => (
-                  <tr key={a.id} className="border-b border-slate-50 last:border-0 dark:border-slate-800/60">
-                    <td className="py-2 pr-4">{formatDate(a.weekStarting)}</td>
-                    <td className={`py-2 pr-4 ${a.direction === "IN" ? "text-emerald-600" : "text-slate-600 dark:text-slate-300"}`}>
-                      {a.direction === "IN" ? "Cash in" : "Cash out"}
-                    </td>
-                    <td className="py-2 pr-4">{a.category}</td>
-                    <td className="py-2 pr-4">{a.description}</td>
-                    <td className="py-2 pr-4">{formatCurrency(a.amount)}</td>
-                    <td className="py-2 pr-4 text-right">
-                      <form action={deleteCashflowAdjustment.bind(null, a.id)}>
-                        <button type="submit" className="text-xs text-rose-600 hover:underline">
-                          Delete
-                        </button>
-                      </form>
-                    </td>
-                  </tr>
-                ))}
-                {adjustments.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="py-4 text-center text-slate-400">
-                      No one-off items recorded.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+          <Table>
+            <THead>
+              <Th>Week</Th>
+              <Th>Direction</Th>
+              <Th>Category</Th>
+              <Th>Description</Th>
+              <Th>Amount</Th>
+              <Th />
+            </THead>
+            <tbody>
+              {adjustments.map((a) => (
+                <Tr key={a.id}>
+                  <Td>{formatDate(a.weekStarting)}</Td>
+                  <Td className={a.direction === "IN" ? "text-emerald-600" : "text-slate-600 dark:text-slate-300"}>
+                    {a.direction === "IN" ? "Cash in" : "Cash out"}
+                  </Td>
+                  <Td>{a.category}</Td>
+                  <Td>{a.description}</Td>
+                  <Td>{formatCurrency(a.amount)}</Td>
+                  <Td className="text-right">
+                    <form action={deleteCashflowAdjustment.bind(null, a.id)}>
+                      <button type="submit" className="text-xs text-rose-600 hover:underline">
+                        Delete
+                      </button>
+                    </form>
+                  </Td>
+                </Tr>
+              ))}
+              {adjustments.length === 0 && <EmptyRow colSpan={6}>No one-off items recorded.</EmptyRow>}
+            </tbody>
+          </Table>
         </Card>
       </div>
     </div>

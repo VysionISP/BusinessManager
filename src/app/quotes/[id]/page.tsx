@@ -4,6 +4,7 @@ import { Card } from "@/components/Card";
 import { PageHeader } from "@/components/PageHeader";
 import { Button, FormField } from "@/components/FormField";
 import { TrafficBadge } from "@/components/Badge";
+import { EmptyRow, Table, Td, Th, THead, Tr } from "@/components/Table";
 import { formatCurrency, formatDate, formatPercent } from "@/lib/format";
 import { quoteLineSell, quoteTotals } from "@/lib/calculations";
 import { QUOTE_STATUSES, QUOTE_STATUS_LABELS } from "@/lib/types";
@@ -58,47 +59,37 @@ export default async function QuoteDetailPage({ params }: { params: Promise<{ id
             <div className="mb-4">
               <QuoteLineForm action={boundAddLine} />
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead>
-                  <tr className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">
-                    <th className="py-2 pr-4">Section</th>
-                    <th className="py-2 pr-4">Description</th>
-                    <th className="py-2 pr-4">Qty</th>
-                    <th className="py-2 pr-4">Unit price</th>
-                    <th className="py-2 pr-4">Line total</th>
-                    <th className="py-2 pr-4" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {quote.lines.map((line) => (
-                    <tr key={line.id} className="border-b border-slate-50 last:border-0 dark:border-slate-800/60">
-                      <td className="py-2 pr-4 text-slate-500 dark:text-slate-400">{line.section ?? "—"}</td>
-                      <td className="py-2 pr-4">{line.description}</td>
-                      <td className="py-2 pr-4">
-                        {line.quantity} {line.unit}
-                      </td>
-                      <td className="py-2 pr-4">{formatCurrency(line.unitPrice, true)}</td>
-                      <td className="py-2 pr-4 font-medium">{formatCurrency(quoteLineSell(line))}</td>
-                      <td className="py-2 pr-4 text-right">
-                        <form action={deleteQuoteLine.bind(null, quoteId, line.id)}>
-                          <button type="submit" className="text-xs text-rose-600 hover:underline">
-                            Delete
-                          </button>
-                        </form>
-                      </td>
-                    </tr>
-                  ))}
-                  {quote.lines.length === 0 && (
-                    <tr>
-                      <td colSpan={6} className="py-4 text-center text-slate-400">
-                        No line items yet.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+            <Table>
+              <THead>
+                <Th>Section</Th>
+                <Th>Description</Th>
+                <Th>Qty</Th>
+                <Th>Unit price</Th>
+                <Th>Line total</Th>
+                <Th />
+              </THead>
+              <tbody>
+                {quote.lines.map((line) => (
+                  <Tr key={line.id}>
+                    <Td className="text-slate-500 dark:text-slate-400">{line.section ?? "—"}</Td>
+                    <Td>{line.description}</Td>
+                    <Td>
+                      {line.quantity} {line.unit}
+                    </Td>
+                    <Td>{formatCurrency(line.unitPrice, true)}</Td>
+                    <Td className="font-medium">{formatCurrency(quoteLineSell(line))}</Td>
+                    <Td className="text-right">
+                      <form action={deleteQuoteLine.bind(null, quoteId, line.id)}>
+                        <button type="submit" className="text-xs text-rose-600 hover:underline">
+                          Delete
+                        </button>
+                      </form>
+                    </Td>
+                  </Tr>
+                ))}
+                {quote.lines.length === 0 && <EmptyRow colSpan={6}>No line items yet.</EmptyRow>}
+              </tbody>
+            </Table>
 
             <div className="mt-5 grid grid-cols-2 gap-4 border-t border-slate-100 pt-4 dark:border-slate-800 sm:grid-cols-4">
               <Stat label="Total cost" value={formatCurrency(totals.totalCost)} />

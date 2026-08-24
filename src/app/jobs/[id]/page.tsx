@@ -1,14 +1,22 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { AlertTriangle, Wallet } from "lucide-react";
 import { Card } from "@/components/Card";
 import { PageHeader } from "@/components/PageHeader";
 import { Button, FormField } from "@/components/FormField";
 import { JobStatusBadge, TrafficBadge } from "@/components/Badge";
+import { Tabs, TabPanel, type TabDef } from "@/components/Tabs";
 import { formatCurrency, formatDate, formatPercent } from "@/lib/format";
 import { progressClaimSummary } from "@/lib/calculations";
 import { prisma } from "@/lib/db";
 import { getJobDetail } from "@/lib/queries";
-import { JOB_STATUSES, JOB_STATUS_LABELS, PO_STATUS_LABELS, PRICING_METHOD_LABELS } from "@/lib/types";
+import {
+  JOB_STATUSES,
+  JOB_STATUS_LABELS,
+  PO_STATUS_LABELS,
+  PRICING_METHOD_LABELS,
+  SCHEDULE_EVENT_TYPE_LABELS,
+} from "@/lib/types";
 import { ChargeUpInvoiceForm } from "./ChargeUpInvoiceForm";
 import { CostEntryForm } from "./CostEntryForm";
 import { InvoiceForm } from "./InvoiceForm";
@@ -28,6 +36,8 @@ import {
 } from "../actions";
 
 export const dynamic = "force-dynamic";
+
+const TIME_FORMATTER = new Intl.DateTimeFormat("en-AU", { hour: "2-digit", minute: "2-digit" });
 
 const CATEGORY_LABELS: Record<string, string> = {
   LABOUR: "Labour",
@@ -121,216 +131,393 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
       </div>
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-        <div className="space-y-5 lg:col-span-2">
-          <Card title="Budget vs actual">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">
-                  <th className="py-2 pr-4">Category</th>
-                  <th className="py-2 pr-4">Budget</th>
-                  <th className="py-2 pr-4">Actual</th>
-                  <th className="py-2 pr-4">Variance</th>
-                </tr>
-              </thead>
-              <tbody>
-                <BudgetRow label="Labour" budget={job.budgetLabourCost} actual={financials.actual.labour} />
-                <BudgetRow label="Materials" budget={job.budgetMaterials} actual={financials.actual.materials} />
-                <BudgetRow label="Subcontractors" budget={job.budgetSubcontractors} actual={financials.actual.subcontractor} />
-                <BudgetRow label="Other direct costs" budget={job.budgetOtherDirectCosts} actual={financials.actual.equipment + financials.actual.other} />
-                <BudgetRow label="Total" budget={financials.budgetTotal} actual={financials.actual.total} />
-              </tbody>
-            </table>
-            <div className="mt-3 text-xs text-slate-500 dark:text-slate-400">
-              Labour hours: {financials.actual.labourHours.toFixed(1)} actual vs {job.budgetLabourHours.toFixed(1)} budgeted
-              {financials.overBudgetLabourHours && <span className="ml-2 font-medium text-rose-600">over budget</span>}
-            </div>
+        <div className="lg:col-span-2">
+          <Tabs tabs={JOB_TABS(job, financials, auditLog)} defaultTab="overview">
+            <TabPanel id="overview">
+              <div className="space-y-5">
+                <Card title="Work in progress (management estimate)" icon={Wallet}>
+                  <div className="space-y-2 text-sm">
+                    <Row label="Original quote" value={formatCurrency(financials.originalQuoteAmount)} />
+                    {financials.approvedVariationsTotal !== 0 && (
+                      <Row label="Approved variations" value={formatCurrency(financials.approvedVariationsTotal)} />
+                    )}
+                    <Row
+                      label="Contract value"
+                      value={formatCurrency(financials.wip.contractValue)}
+                      bold={financials.approvedVariationsTotal !== 0}
+                    />
+                    <Row label={`Earned value (${job.percentComplete}% complete)`} value={formatCurrency(financials.wip.earnedValue)} />
+                    <Row label="Total invoiced" value={formatCurrency(financials.wip.totalInvoiced)} />
+                    <div className="my-2 border-t border-slate-100 dark:border-slate-800" />
+                    <Row label="Management WIP" value={formatCurrency(financials.wip.managementWip)} bold />
+                  </div>
+                  <p className="mt-3 text-xs text-slate-400">
+                    Work completed but not yet invoiced. This is a management indicator, not formal revenue recognition.
+                  </p>
+                </Card>
 
-            <div className="mt-5 grid grid-cols-2 gap-4 border-t border-slate-100 pt-4 dark:border-slate-800 sm:grid-cols-5">
-              <div>
-                <div className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Expected profit</div>
-                <div className="font-semibold">{formatCurrency(financials.expectedProfit)}</div>
-                <div className="text-xs text-slate-400">{formatPercent(financials.expectedMarginPercent, 1)} margin</div>
-              </div>
-              <div>
-                <div className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Committed (open POs)</div>
-                <div className="font-semibold">{formatCurrency(financials.forecast.committedCost)}</div>
-              </div>
-              <div>
-                <div className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Forecast final cost</div>
-                <div className="font-semibold">{formatCurrency(financials.forecast.forecastFinalCost)}</div>
-              </div>
-              <div>
-                <div className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Forecast profit</div>
-                <div className="font-semibold">{formatCurrency(financials.forecast.forecastProfit)}</div>
-              </div>
-              <div>
-                <div className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Forecast margin</div>
-                <TrafficBadge severity={financials.belowTargetMargin ? "red" : "green"} label={formatPercent(financials.forecast.forecastMarginPercent, 1)} />
-              </div>
-            </div>
-          </Card>
+                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                  <Card title="Job cash position">
+                    <div className="space-y-2 text-sm">
+                      <Row label="Spent to date" value={formatCurrency(financials.cash.cashSpent)} />
+                      <Row label="Received to date" value={formatCurrency(financials.cash.cashReceived)} />
+                      <div className="my-2 border-t border-slate-100 dark:border-slate-800" />
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium">Cash position</span>
+                        <TrafficBadge
+                          severity={financials.heavyCashFunding ? "red" : financials.cash.cashPosition < 0 ? "orange" : "green"}
+                          label={formatCurrency(financials.cash.cashPosition)}
+                        />
+                      </div>
+                    </div>
+                    {financials.cash.cashPosition < 0 && (
+                      <p className="mt-3 text-xs text-slate-400">
+                        The business is currently funding {formatCurrency(-financials.cash.cashPosition)} on this job.
+                      </p>
+                    )}
+                  </Card>
 
-          <Card title="Job phases">
-            <PhaseList jobId={jobId} phases={job.phases} costEntries={job.costEntries} />
-          </Card>
+                  <Card title="Outstanding">
+                    <div className="space-y-2 text-sm">
+                      <Row label="Total invoiced" value={formatCurrency(financials.totalInvoiced)} />
+                      <Row label="Total received" value={formatCurrency(financials.totalReceived)} />
+                      <div className="my-2 border-t border-slate-100 dark:border-slate-800" />
+                      <Row label="Outstanding" value={formatCurrency(financials.totalOutstanding)} bold />
+                      {financials.hasOverdueInvoice && (
+                        <p className="flex items-center gap-1.5 text-xs font-medium text-rose-600">
+                          <AlertTriangle className="h-3.5 w-3.5" strokeWidth={2.25} />
+                          One or more invoices are overdue.
+                        </p>
+                      )}
+                    </div>
+                  </Card>
+                </div>
 
-          <Card title="Variations">
-            <VariationList jobId={jobId} variations={job.variations} />
-          </Card>
+                {job.retentionPercent > 0 && (
+                  <Card title="Progress claim summary">
+                    {(() => {
+                      const claim = progressClaimSummary(
+                        financials.revisedContractValue,
+                        financials.totalInvoiced,
+                        job.invoices,
+                        job.retentionPercent,
+                      );
+                      return (
+                        <div className="space-y-2 text-sm">
+                          <Row label="Revised contract value" value={formatCurrency(claim.revisedContractValue)} />
+                          <Row label="Claimed to date" value={formatCurrency(claim.totalClaimedToDate)} />
+                          <Row label="Remaining contract" value={formatCurrency(claim.remainingContract)} />
+                          <div className="my-2 border-t border-slate-100 dark:border-slate-800" />
+                          <Row label={`Retention held (${job.retentionPercent}%)`} value={formatCurrency(claim.retentionHeld)} bold />
+                        </div>
+                      );
+                    })()}
+                  </Card>
+                )}
+              </div>
+            </TabPanel>
 
-          <Card
-            title="Purchase orders"
-            action={
-              <Link href={`/purchase-orders/new?jobId=${jobId}`} className="text-xs font-medium text-blue-600 hover:underline">
-                + New PO
-              </Link>
-            }
-          >
-            {job.purchaseOrders.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
-                  <thead>
-                    <tr className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">
-                      <th className="py-2 pr-4">PO #</th>
-                      <th className="py-2 pr-4">Supplier</th>
-                      <th className="py-2 pr-4">Total</th>
-                      <th className="py-2 pr-4">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {job.purchaseOrders.map((po) => (
-                      <tr key={po.id} className="border-b border-slate-50 last:border-0 dark:border-slate-800/60">
-                        <td className="py-2 pr-4 font-medium">
-                          <Link href={`/purchase-orders/${po.id}`} className="text-blue-600 hover:underline">
-                            {po.poNumber}
-                          </Link>
-                        </td>
-                        <td className="py-2 pr-4">{po.supplier.name}</td>
-                        <td className="py-2 pr-4">{formatCurrency(po.lines.reduce((s, l) => s + l.quantity * l.unitCost, 0))}</td>
-                        <td className="py-2 pr-4">
-                          <TrafficBadge
-                            severity={po.status === "CLOSED" || po.status === "INVOICED" ? "green" : po.status === "CANCELLED" ? "red" : "orange"}
-                            label={PO_STATUS_LABELS[po.status as keyof typeof PO_STATUS_LABELS] ?? po.status}
-                          />
-                        </td>
+            <TabPanel id="budget">
+              <div className="space-y-5">
+                <Card title="Budget vs actual">
+                  <table className="w-full text-left text-sm">
+                    <thead>
+                      <tr className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">
+                        <th className="py-2 pr-4">Category</th>
+                        <th className="py-2 pr-4">Budget</th>
+                        <th className="py-2 pr-4">Actual</th>
+                        <th className="py-2 pr-4">Variance</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      <BudgetRow label="Labour" budget={job.budgetLabourCost} actual={financials.actual.labour} />
+                      <BudgetRow label="Materials" budget={job.budgetMaterials} actual={financials.actual.materials} />
+                      <BudgetRow label="Subcontractors" budget={job.budgetSubcontractors} actual={financials.actual.subcontractor} />
+                      <BudgetRow
+                        label="Other direct costs"
+                        budget={job.budgetOtherDirectCosts}
+                        actual={financials.actual.equipment + financials.actual.other}
+                      />
+                      <BudgetRow label="Total" budget={financials.budgetTotal} actual={financials.actual.total} />
+                    </tbody>
+                  </table>
+                  <div className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+                    Labour hours: {financials.actual.labourHours.toFixed(1)} actual vs {job.budgetLabourHours.toFixed(1)} budgeted
+                    {financials.overBudgetLabourHours && <span className="ml-2 font-medium text-rose-600">over budget</span>}
+                  </div>
+
+                  <div className="mt-5 grid grid-cols-2 gap-4 border-t border-slate-100 pt-4 dark:border-slate-800 sm:grid-cols-5">
+                    <div>
+                      <div className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Expected profit</div>
+                      <div className="font-semibold">{formatCurrency(financials.expectedProfit)}</div>
+                      <div className="text-xs text-slate-400">{formatPercent(financials.expectedMarginPercent, 1)} margin</div>
+                    </div>
+                    <div>
+                      <div className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Committed (open POs)</div>
+                      <div className="font-semibold">{formatCurrency(financials.forecast.committedCost)}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Forecast final cost</div>
+                      <div className="font-semibold">{formatCurrency(financials.forecast.forecastFinalCost)}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Forecast profit</div>
+                      <div className="font-semibold">{formatCurrency(financials.forecast.forecastProfit)}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Forecast margin</div>
+                      <TrafficBadge
+                        severity={financials.belowTargetMargin ? "red" : "green"}
+                        label={formatPercent(financials.forecast.forecastMarginPercent, 1)}
+                      />
+                    </div>
+                  </div>
+                </Card>
+
+                <Card title="Actual costs">
+                  <div className="mb-4">
+                    <CostEntryForm action={boundAddCostEntry} phases={job.phases} />
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm">
+                      <thead>
+                        <tr className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">
+                          <th className="py-2 pr-4">Date</th>
+                          <th className="py-2 pr-4">Category</th>
+                          <th className="py-2 pr-4">Description</th>
+                          <th className="py-2 pr-4">Hours</th>
+                          <th className="py-2 pr-4">Amount</th>
+                          <th className="py-2 pr-4" />
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {job.costEntries.map((entry) => (
+                          <tr key={entry.id} className="border-b border-slate-50 last:border-0 dark:border-slate-800/60">
+                            <td className="py-2 pr-4">{formatDate(entry.date)}</td>
+                            <td className="py-2 pr-4">{CATEGORY_LABELS[entry.category] ?? entry.category}</td>
+                            <td className="py-2 pr-4">{entry.description}</td>
+                            <td className="py-2 pr-4">{entry.hours ?? "—"}</td>
+                            <td className="py-2 pr-4">{formatCurrency(entry.amount)}</td>
+                            <td className="py-2 pr-4 text-right">
+                              <form action={deleteCostEntry.bind(null, jobId, entry.id)}>
+                                <button type="submit" className="text-xs text-rose-600 hover:underline">
+                                  Delete
+                                </button>
+                              </form>
+                            </td>
+                          </tr>
+                        ))}
+                        {job.costEntries.length === 0 && (
+                          <tr>
+                            <td colSpan={6} className="py-4 text-center text-slate-400">
+                              No costs recorded yet.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </Card>
               </div>
-            ) : (
-              <p className="text-sm text-slate-400">No purchase orders raised for this job yet.</p>
-            )}
-          </Card>
+            </TabPanel>
 
-          <Card title="Actual costs">
-            <div className="mb-4">
-              <CostEntryForm action={boundAddCostEntry} phases={job.phases} />
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead>
-                  <tr className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">
-                    <th className="py-2 pr-4">Date</th>
-                    <th className="py-2 pr-4">Category</th>
-                    <th className="py-2 pr-4">Description</th>
-                    <th className="py-2 pr-4">Hours</th>
-                    <th className="py-2 pr-4">Amount</th>
-                    <th className="py-2 pr-4" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {job.costEntries.map((entry) => (
-                    <tr key={entry.id} className="border-b border-slate-50 last:border-0 dark:border-slate-800/60">
-                      <td className="py-2 pr-4">{formatDate(entry.date)}</td>
-                      <td className="py-2 pr-4">{CATEGORY_LABELS[entry.category] ?? entry.category}</td>
-                      <td className="py-2 pr-4">{entry.description}</td>
-                      <td className="py-2 pr-4">{entry.hours ?? "—"}</td>
-                      <td className="py-2 pr-4">{formatCurrency(entry.amount)}</td>
-                      <td className="py-2 pr-4 text-right">
-                        <form action={deleteCostEntry.bind(null, jobId, entry.id)}>
-                          <button type="submit" className="text-xs text-rose-600 hover:underline">
-                            Delete
-                          </button>
-                        </form>
-                      </td>
-                    </tr>
-                  ))}
-                  {job.costEntries.length === 0 && (
-                    <tr>
-                      <td colSpan={6} className="py-4 text-center text-slate-400">
-                        No costs recorded yet.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </Card>
+            <TabPanel id="phases">
+              <Card title="Job phases">
+                <PhaseList jobId={jobId} phases={job.phases} costEntries={job.costEntries} />
+              </Card>
+            </TabPanel>
 
-          <Card title="Forms & certificates">
-            {job.formSubmissions.length > 0 && (
-              <ul className="mb-4 space-y-1 text-sm">
-                {job.formSubmissions.map((s) => (
-                  <li key={s.id} className="flex items-center justify-between">
-                    <Link href={`/forms/submissions/${s.id}`} className="text-blue-600 hover:underline">
-                      {s.formTemplate.name}
-                    </Link>
-                    <span className="text-xs text-slate-400">{formatDate(s.submittedAt)}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-            {formTemplates.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
-                {formTemplates.map((t) => (
-                  <Link
-                    key={t.id}
-                    href={`/forms/submit/${t.id}?jobId=${jobId}`}
-                    className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"
-                  >
-                    + Fill out {t.name}
+            <TabPanel id="variations">
+              <Card title="Variations">
+                <VariationList jobId={jobId} variations={job.variations} />
+              </Card>
+            </TabPanel>
+
+            <TabPanel id="purchase-orders">
+              <Card
+                title="Purchase orders"
+                action={
+                  <Link href={`/purchase-orders/new?jobId=${jobId}`} className="text-xs font-medium text-blue-600 hover:underline">
+                    + New PO
                   </Link>
-                ))}
+                }
+              >
+                {job.purchaseOrders.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm">
+                      <thead>
+                        <tr className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">
+                          <th className="py-2 pr-4">PO #</th>
+                          <th className="py-2 pr-4">Supplier</th>
+                          <th className="py-2 pr-4">Total</th>
+                          <th className="py-2 pr-4">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {job.purchaseOrders.map((po) => (
+                          <tr key={po.id} className="border-b border-slate-50 last:border-0 dark:border-slate-800/60">
+                            <td className="py-2 pr-4 font-medium">
+                              <Link href={`/purchase-orders/${po.id}`} className="text-blue-600 hover:underline">
+                                {po.poNumber}
+                              </Link>
+                            </td>
+                            <td className="py-2 pr-4">{po.supplier.name}</td>
+                            <td className="py-2 pr-4">{formatCurrency(po.lines.reduce((s, l) => s + l.quantity * l.unitCost, 0))}</td>
+                            <td className="py-2 pr-4">
+                              <TrafficBadge
+                                severity={po.status === "CLOSED" || po.status === "INVOICED" ? "green" : po.status === "CANCELLED" ? "red" : "orange"}
+                                label={PO_STATUS_LABELS[po.status as keyof typeof PO_STATUS_LABELS] ?? po.status}
+                              />
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="text-sm text-slate-400">No purchase orders raised for this job yet.</p>
+                )}
+              </Card>
+            </TabPanel>
+
+            <TabPanel id="invoicing">
+              <div className="space-y-5">
+                {job.pricingMethod === "CHARGE_UP" && (
+                  <Card title="Charge-up invoicing — unbilled costs">
+                    <ChargeUpInvoiceForm
+                      unbilledEntries={job.costEntries.filter((e) => !e.invoiceId)}
+                      action={createChargeUpInvoice.bind(null, jobId)}
+                    />
+                  </Card>
+                )}
+
+                <Card title="Invoices & payments">
+                  <div className="mb-4">
+                    <InvoiceForm action={boundAddInvoice} />
+                  </div>
+                  <div className="space-y-3">
+                    {financials.invoices.map((inv) => {
+                      const rawInvoice = job.invoices.find((i) => i.id === inv.id)!;
+                      return (
+                        <InvoiceRow
+                          key={inv.id}
+                          invoice={inv}
+                          payments={rawInvoice.payments}
+                          addPaymentAction={addPayment.bind(null, jobId, inv.id)}
+                          deletePaymentAction={deletePayment.bind(null, jobId)}
+                          deleteInvoiceAction={deleteInvoice.bind(null, jobId, inv.id)}
+                        />
+                      );
+                    })}
+                    {financials.invoices.length === 0 && <p className="py-4 text-center text-slate-400">No invoices raised yet.</p>}
+                  </div>
+                </Card>
               </div>
-            ) : (
-              <p className="text-sm text-slate-400">
-                No form templates yet —{" "}
-                <Link href="/forms/templates/new" className="text-blue-600 hover:underline">
-                  create one
-                </Link>
-                .
-              </p>
-            )}
-          </Card>
+            </TabPanel>
 
-          {job.pricingMethod === "CHARGE_UP" && (
-            <Card title="Charge-up invoicing — unbilled costs">
-              <ChargeUpInvoiceForm unbilledEntries={job.costEntries.filter((e) => !e.invoiceId)} action={createChargeUpInvoice.bind(null, jobId)} />
-            </Card>
-          )}
+            <TabPanel id="forms">
+              <Card title="Forms & certificates">
+                {job.formSubmissions.length > 0 && (
+                  <ul className="mb-4 space-y-1 text-sm">
+                    {job.formSubmissions.map((s) => (
+                      <li key={s.id} className="flex items-center justify-between">
+                        <Link href={`/forms/submissions/${s.id}`} className="text-blue-600 hover:underline">
+                          {s.formTemplate.name}
+                        </Link>
+                        <span className="text-xs text-slate-400">{formatDate(s.submittedAt)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {formTemplates.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {formTemplates.map((t) => (
+                      <Link
+                        key={t.id}
+                        href={`/forms/submit/${t.id}?jobId=${jobId}`}
+                        className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"
+                      >
+                        + Fill out {t.name}
+                      </Link>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-slate-400">
+                    No form templates yet —{" "}
+                    <Link href="/forms/templates/new" className="text-blue-600 hover:underline">
+                      create one
+                    </Link>
+                    .
+                  </p>
+                )}
+              </Card>
+            </TabPanel>
 
-          <Card title="Invoices & payments">
-            <div className="mb-4">
-              <InvoiceForm action={boundAddInvoice} />
-            </div>
-            <div className="space-y-3">
-              {financials.invoices.map((inv) => {
-                const rawInvoice = job.invoices.find((i) => i.id === inv.id)!;
-                return (
-                  <InvoiceRow
-                    key={inv.id}
-                    invoice={inv}
-                    payments={rawInvoice.payments}
-                    addPaymentAction={addPayment.bind(null, jobId, inv.id)}
-                    deletePaymentAction={deletePayment.bind(null, jobId)}
-                    deleteInvoiceAction={deleteInvoice.bind(null, jobId, inv.id)}
-                  />
-                );
-              })}
-              {financials.invoices.length === 0 && <p className="py-4 text-center text-slate-400">No invoices raised yet.</p>}
-            </div>
-          </Card>
+            <TabPanel id="schedule">
+              <Card title="Scheduled visits">
+                {job.scheduleEvents.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm">
+                      <thead>
+                        <tr className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">
+                          <th className="py-2 pr-4">Date</th>
+                          <th className="py-2 pr-4">Time</th>
+                          <th className="py-2 pr-4">Type</th>
+                          <th className="py-2 pr-4">Title</th>
+                          <th className="py-2 pr-4">Employee</th>
+                          <th className="py-2 pr-4">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {job.scheduleEvents.map((e) => (
+                          <tr key={e.id} className="border-b border-slate-50 last:border-0 dark:border-slate-800/60">
+                            <td className="py-2 pr-4">{formatDate(e.startAt)}</td>
+                            <td className="py-2 pr-4">
+                              {TIME_FORMATTER.format(e.startAt)}–{TIME_FORMATTER.format(e.endAt)}
+                            </td>
+                            <td className="py-2 pr-4">{SCHEDULE_EVENT_TYPE_LABELS[e.eventType as keyof typeof SCHEDULE_EVENT_TYPE_LABELS] ?? e.eventType}</td>
+                            <td className="py-2 pr-4">{e.title}</td>
+                            <td className="py-2 pr-4">{e.employee?.name ?? "Unassigned"}</td>
+                            <td className="py-2 pr-4">
+                              <TrafficBadge
+                                severity={e.status === "DONE" ? "green" : e.status === "CANCELLED" ? "red" : "orange"}
+                                label={e.status}
+                              />
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="text-sm text-slate-400">
+                    No visits scheduled for this job yet —{" "}
+                    <Link href={`/scheduling?jobId=${jobId}`} className="text-blue-600 hover:underline">
+                      open scheduling
+                    </Link>
+                    .
+                  </p>
+                )}
+              </Card>
+            </TabPanel>
+
+            <TabPanel id="audit">
+              <Card title="Audit trail">
+                {auditLog.length > 0 ? (
+                  <ul className="space-y-2 text-xs">
+                    {auditLog.map((entry) => (
+                      <li key={entry.id} className="border-b border-slate-50 pb-2 last:border-0 last:pb-0 dark:border-slate-800/60">
+                        <div className="text-slate-700 dark:text-slate-300">{entry.summary}</div>
+                        <div className="text-slate-400">{formatDate(entry.createdAt)}</div>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-slate-400">No audit events recorded for this job yet.</p>
+                )}
+              </Card>
+            </TabPanel>
+          </Tabs>
         </div>
 
         <div className="space-y-5">
@@ -346,82 +533,28 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
               <Button>Update</Button>
             </form>
           </Card>
-
-          <Card title="Work in progress (management estimate)">
-            <div className="space-y-2 text-sm">
-              <Row label="Original quote" value={formatCurrency(financials.originalQuoteAmount)} />
-              {financials.approvedVariationsTotal !== 0 && (
-                <Row label="Approved variations" value={formatCurrency(financials.approvedVariationsTotal)} />
-              )}
-              <Row label="Contract value" value={formatCurrency(financials.wip.contractValue)} bold={financials.approvedVariationsTotal !== 0} />
-              <Row label={`Earned value (${job.percentComplete}% complete)`} value={formatCurrency(financials.wip.earnedValue)} />
-              <Row label="Total invoiced" value={formatCurrency(financials.wip.totalInvoiced)} />
-              <div className="my-2 border-t border-slate-100 dark:border-slate-800" />
-              <Row label="Management WIP" value={formatCurrency(financials.wip.managementWip)} bold />
-            </div>
-            <p className="mt-3 text-xs text-slate-400">Work completed but not yet invoiced. This is a management indicator, not formal revenue recognition.</p>
-          </Card>
-
-          <Card title="Job cash position">
-            <div className="space-y-2 text-sm">
-              <Row label="Spent to date" value={formatCurrency(financials.cash.cashSpent)} />
-              <Row label="Received to date" value={formatCurrency(financials.cash.cashReceived)} />
-              <div className="my-2 border-t border-slate-100 dark:border-slate-800" />
-              <div className="flex items-center justify-between">
-                <span className="font-medium">Cash position</span>
-                <TrafficBadge severity={financials.heavyCashFunding ? "red" : financials.cash.cashPosition < 0 ? "orange" : "green"} label={formatCurrency(financials.cash.cashPosition)} />
-              </div>
-            </div>
-            {financials.cash.cashPosition < 0 && (
-              <p className="mt-3 text-xs text-slate-400">
-                The business is currently funding {formatCurrency(-financials.cash.cashPosition)} on this job.
-              </p>
-            )}
-          </Card>
-
-          <Card title="Outstanding">
-            <div className="space-y-2 text-sm">
-              <Row label="Total invoiced" value={formatCurrency(financials.totalInvoiced)} />
-              <Row label="Total received" value={formatCurrency(financials.totalReceived)} />
-              <div className="my-2 border-t border-slate-100 dark:border-slate-800" />
-              <Row label="Outstanding" value={formatCurrency(financials.totalOutstanding)} bold />
-              {financials.hasOverdueInvoice && <p className="text-xs font-medium text-rose-600">One or more invoices are overdue.</p>}
-            </div>
-          </Card>
-
-          {job.retentionPercent > 0 && (
-            <Card title="Progress claim summary">
-              {(() => {
-                const claim = progressClaimSummary(financials.revisedContractValue, financials.totalInvoiced, job.invoices, job.retentionPercent);
-                return (
-                  <div className="space-y-2 text-sm">
-                    <Row label="Revised contract value" value={formatCurrency(claim.revisedContractValue)} />
-                    <Row label="Claimed to date" value={formatCurrency(claim.totalClaimedToDate)} />
-                    <Row label="Remaining contract" value={formatCurrency(claim.remainingContract)} />
-                    <div className="my-2 border-t border-slate-100 dark:border-slate-800" />
-                    <Row label={`Retention held (${job.retentionPercent}%)`} value={formatCurrency(claim.retentionHeld)} bold />
-                  </div>
-                );
-              })()}
-            </Card>
-          )}
-
-          {auditLog.length > 0 && (
-            <Card title="Audit trail">
-              <ul className="space-y-2 text-xs">
-                {auditLog.map((entry) => (
-                  <li key={entry.id} className="border-b border-slate-50 pb-2 last:border-0 last:pb-0 dark:border-slate-800/60">
-                    <div className="text-slate-700 dark:text-slate-300">{entry.summary}</div>
-                    <div className="text-slate-400">{formatDate(entry.createdAt)}</div>
-                  </li>
-                ))}
-              </ul>
-            </Card>
-          )}
         </div>
       </div>
     </div>
   );
+}
+
+function JOB_TABS(
+  job: NonNullable<Awaited<ReturnType<typeof getJobDetail>>>["job"],
+  financials: NonNullable<Awaited<ReturnType<typeof getJobDetail>>>["financials"],
+  auditLog: unknown[],
+): TabDef[] {
+  return [
+    { id: "overview", label: "Overview", icon: "overview" },
+    { id: "budget", label: "Budget & Costs", icon: "budget" },
+    { id: "phases", label: "Phases", icon: "phases", badge: job.phases.length },
+    { id: "variations", label: "Variations", icon: "variations", badge: job.variations.length },
+    { id: "purchase-orders", label: "Purchase Orders", icon: "purchaseOrders", badge: job.purchaseOrders.length },
+    { id: "invoicing", label: "Invoicing", icon: "invoicing", badge: financials.invoices.length },
+    { id: "forms", label: "Forms", icon: "forms", badge: job.formSubmissions.length },
+    { id: "schedule", label: "Schedule", icon: "schedule", badge: job.scheduleEvents.length },
+    { id: "audit", label: "Audit", icon: "audit", badge: auditLog.length },
+  ];
 }
 
 function Row({ label, value, bold }: { label: string; value: string; bold?: boolean }) {

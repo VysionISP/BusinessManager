@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Card } from "@/components/Card";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/FormField";
+import { Avatar, EmptyRow, Table, Td, Th, THead, Tr } from "@/components/Table";
 import { CUSTOMER_TYPE_LABELS } from "@/lib/types";
 import { getCustomers } from "@/lib/queries";
 
@@ -23,43 +24,38 @@ export default async function CustomersPage() {
       />
 
       <Card>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">
-                <th className="py-2 pr-4">Name</th>
-                <th className="py-2 pr-4">Type</th>
-                <th className="py-2 pr-4">Main contact</th>
-                <th className="py-2 pr-4">Sites</th>
-                <th className="py-2 pr-4">Jobs</th>
-                <th className="py-2 pr-4">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {customers.map((c) => (
-                <tr key={c.id} className="border-b border-slate-50 last:border-0 dark:border-slate-800/60">
-                  <td className="py-2 pr-4 font-medium">
+        <Table>
+          <THead>
+            <Th>Name</Th>
+            <Th>Type</Th>
+            <Th>Main contact</Th>
+            <Th>Sites</Th>
+            <Th>Jobs</Th>
+            <Th>Status</Th>
+          </THead>
+          <tbody>
+            {customers.map((c) => (
+              <Tr key={c.id}>
+                <Td className="font-medium">
+                  <div className="flex items-center gap-2.5">
+                    <Avatar name={c.name} />
                     <Link href={`/customers/${c.id}`} className="text-blue-600 hover:underline">
                       {c.name}
                     </Link>
-                  </td>
-                  <td className="py-2 pr-4 text-slate-500 dark:text-slate-400">{CUSTOMER_TYPE_LABELS[c.customerType as keyof typeof CUSTOMER_TYPE_LABELS] ?? c.customerType}</td>
-                  <td className="py-2 pr-4">{c.mainContactName ?? c.phone ?? c.email ?? "—"}</td>
-                  <td className="py-2 pr-4">{c.sites.length}</td>
-                  <td className="py-2 pr-4">{c._count.jobs}</td>
-                  <td className="py-2 pr-4">{c.active ? <span className="text-emerald-600">Active</span> : <span className="text-slate-400">Inactive</span>}</td>
-                </tr>
-              ))}
-              {customers.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="py-6 text-center text-slate-400">
-                    No customers yet.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+                  </div>
+                </Td>
+                <Td className="text-slate-500 dark:text-slate-400">
+                  {CUSTOMER_TYPE_LABELS[c.customerType as keyof typeof CUSTOMER_TYPE_LABELS] ?? c.customerType}
+                </Td>
+                <Td>{c.mainContactName ?? c.phone ?? c.email ?? "—"}</Td>
+                <Td>{c.sites.length}</Td>
+                <Td>{c._count.jobs}</Td>
+                <Td>{c.active ? <span className="text-emerald-600">Active</span> : <span className="text-slate-400">Inactive</span>}</Td>
+              </Tr>
+            ))}
+            {customers.length === 0 && <EmptyRow colSpan={6}>No customers yet.</EmptyRow>}
+          </tbody>
+        </Table>
       </Card>
     </div>
   );

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Card } from "@/components/Card";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/FormField";
+import { EmptyRow, Table, Td, Th, THead, Tr } from "@/components/Table";
 import { formatDate } from "@/lib/format";
 import { prisma } from "@/lib/db";
 import { deleteFormTemplate } from "./actions";
@@ -46,39 +47,29 @@ export default async function FormsPage() {
 
       <div className="mt-5">
         <Card title="Recent submissions">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">
-                  <th className="py-2 pr-4">Date</th>
-                  <th className="py-2 pr-4">Form</th>
-                  <th className="py-2 pr-4">Job</th>
-                  <th className="py-2 pr-4">Submitted by</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentSubmissions.map((s) => (
-                  <tr key={s.id} className="border-b border-slate-50 last:border-0 dark:border-slate-800/60">
-                    <td className="py-2 pr-4">{formatDate(s.submittedAt)}</td>
-                    <td className="py-2 pr-4">
-                      <Link href={`/forms/submissions/${s.id}`} className="text-blue-600 hover:underline">
-                        {s.formTemplate.name}
-                      </Link>
-                    </td>
-                    <td className="py-2 pr-4">{s.job ? <Link href={`/jobs/${s.job.id}`} className="hover:underline">{s.job.jobNumber}</Link> : "—"}</td>
-                    <td className="py-2 pr-4">{s.submittedBy ?? "—"}</td>
-                  </tr>
-                ))}
-                {recentSubmissions.length === 0 && (
-                  <tr>
-                    <td colSpan={4} className="py-6 text-center text-slate-400">
-                      No submissions yet.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+          <Table>
+            <THead>
+              <Th>Date</Th>
+              <Th>Form</Th>
+              <Th>Job</Th>
+              <Th>Submitted by</Th>
+            </THead>
+            <tbody>
+              {recentSubmissions.map((s) => (
+                <Tr key={s.id}>
+                  <Td>{formatDate(s.submittedAt)}</Td>
+                  <Td>
+                    <Link href={`/forms/submissions/${s.id}`} className="text-blue-600 hover:underline">
+                      {s.formTemplate.name}
+                    </Link>
+                  </Td>
+                  <Td>{s.job ? <Link href={`/jobs/${s.job.id}`} className="hover:underline">{s.job.jobNumber}</Link> : "—"}</Td>
+                  <Td>{s.submittedBy ?? "—"}</Td>
+                </Tr>
+              ))}
+              {recentSubmissions.length === 0 && <EmptyRow colSpan={4}>No submissions yet.</EmptyRow>}
+            </tbody>
+          </Table>
         </Card>
       </div>
     </div>

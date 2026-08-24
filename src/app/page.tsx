@@ -3,9 +3,38 @@ import { Card } from "@/components/Card";
 import { PageHeader } from "@/components/PageHeader";
 import { StatGrid, StatTile } from "@/components/StatTile";
 import { TrafficBadge } from "@/components/Badge";
+import { Table, Td, Th, THead, Tr } from "@/components/Table";
 import { formatCurrency, formatHours, formatPercent } from "@/lib/format";
 import { getDashboardData } from "@/lib/queries";
 import type { AlertSeverity } from "@/lib/calculations";
+import {
+  AlertOctagon,
+  AlertTriangle,
+  Banknote,
+  Briefcase,
+  CalendarDays,
+  CalendarRange,
+  Clock,
+  Coins,
+  DollarSign,
+  FileText,
+  FileWarning,
+  Gauge,
+  HardHat,
+  Inbox,
+  Landmark,
+  LineChart,
+  Percent,
+  PiggyBank,
+  Receipt,
+  Scale,
+  Target,
+  Timer,
+  TrendingDown,
+  TrendingUp,
+  Users,
+  Wallet,
+} from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -105,79 +134,105 @@ export default async function DashboardPage() {
 
       {alerts.length > 0 && (
         <div className="mb-6 space-y-2">
-          {alerts.map((alert, i) => (
-            <div
-              key={i}
-              className={`flex items-center justify-between gap-3 rounded-lg border px-4 py-2.5 text-sm ${
-                alert.severity === "red"
-                  ? "border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300"
-                  : "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300"
-              }`}
-            >
-              <span>{alert.message}</span>
-              {alert.href && (
-                <Link href={alert.href} className="shrink-0 font-medium underline underline-offset-2">
-                  View
-                </Link>
-              )}
-            </div>
-          ))}
+          {alerts.map((alert, i) => {
+            const AlertIcon = alert.severity === "red" ? AlertOctagon : AlertTriangle;
+            return (
+              <div
+                key={i}
+                className={`flex items-center gap-3 rounded-lg border px-4 py-2.5 text-sm shadow-sm ${
+                  alert.severity === "red"
+                    ? "border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300"
+                    : "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300"
+                }`}
+              >
+                <span
+                  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${
+                    alert.severity === "red"
+                      ? "bg-rose-100 text-rose-600 dark:bg-rose-900/60 dark:text-rose-300"
+                      : "bg-amber-100 text-amber-600 dark:bg-amber-900/60 dark:text-amber-300"
+                  }`}
+                >
+                  <AlertIcon className="h-4 w-4" strokeWidth={2.25} />
+                </span>
+                <span className="flex-1">{alert.message}</span>
+                {alert.href && (
+                  <Link href={alert.href} className="shrink-0 font-semibold underline underline-offset-2">
+                    View
+                  </Link>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-        <Card title="Business running costs">
+        <Card title="Business running costs" icon={Wallet}>
           <StatGrid>
-            <StatTile label="Weekly wages" value={formatCurrency(data.runningCosts.weeklyWages)} />
-            <StatTile label="Weekly super" value={formatCurrency(data.runningCosts.weeklySuper)} />
-            <StatTile label="Weekly on-costs" value={formatCurrency(data.runningCosts.weeklyOnCosts)} />
-            <StatTile label="Weekly overheads" value={formatCurrency(data.runningCosts.weeklyOverheads)} />
+            <StatTile label="Weekly wages" value={formatCurrency(data.runningCosts.weeklyWages)} icon={Banknote} />
+            <StatTile label="Weekly super" value={formatCurrency(data.runningCosts.weeklySuper)} icon={PiggyBank} />
+            <StatTile label="Weekly on-costs" value={formatCurrency(data.runningCosts.weeklyOnCosts)} icon={Receipt} />
+            <StatTile label="Weekly overheads" value={formatCurrency(data.runningCosts.weeklyOverheads)} icon={FileText} />
           </StatGrid>
           <div className="mt-4 grid grid-cols-3 gap-3 border-t border-slate-100 pt-4 dark:border-slate-800">
-            <StatTile label="Total weekly cost" value={formatCurrency(data.runningCosts.totalWeeklyCost)} severity="orange" />
-            <StatTile label="Monthly cost" value={formatCurrency(data.runningCosts.monthlyCost)} />
-            <StatTile label="Annual cost" value={formatCurrency(data.runningCosts.annualCost)} />
+            <StatTile label="Total weekly cost" value={formatCurrency(data.runningCosts.totalWeeklyCost)} severity="orange" icon={Wallet} />
+            <StatTile label="Monthly cost" value={formatCurrency(data.runningCosts.monthlyCost)} icon={CalendarDays} />
+            <StatTile label="Annual cost" value={formatCurrency(data.runningCosts.annualCost)} icon={CalendarRange} />
           </div>
         </Card>
 
-        <Card title="Labour">
+        <Card title="Labour" icon={Users}>
           <StatGrid>
-            <StatTile label="Employees" value={String(data.labour.employeeCount)} />
-            <StatTile label="Available hours" value={formatHours(data.labour.totalAvailableHours)} />
-            <StatTile label="Billable hours" value={formatHours(data.labour.totalBillableHours)} />
+            <StatTile label="Employees" value={String(data.labour.employeeCount)} icon={Users} />
+            <StatTile label="Available hours" value={formatHours(data.labour.totalAvailableHours)} icon={Clock} />
+            <StatTile label="Billable hours" value={formatHours(data.labour.totalBillableHours)} icon={Timer} />
             <StatTile
               label="Utilisation"
               value={formatPercent(data.labour.utilisationPercent)}
               severity={data.severities.utilisation}
+              icon={Gauge}
             />
-            <StatTile label="Avg cost / hour" value={formatCurrency(data.labour.avgCostPerHour, true)} />
-            <StatTile label="Break-even / hour" value={formatCurrency(data.breakEvenRate, true)} />
+            <StatTile label="Avg cost / hour" value={formatCurrency(data.labour.avgCostPerHour, true)} icon={DollarSign} />
+            <StatTile label="Break-even / hour" value={formatCurrency(data.breakEvenRate, true)} icon={Scale} />
             <StatTile
               label="Avg charge-out rate"
               value={formatCurrency(data.labour.avgChargeOutRate, true)}
               severity={data.severities.chargeOutVsBreakEven}
+              icon={TrendingUp}
             />
-            <StatTile label="Target rate" value={formatCurrency(data.targetRate, true)} />
+            <StatTile label="Target rate" value={formatCurrency(data.targetRate, true)} icon={Target} />
           </StatGrid>
         </Card>
 
-        <Card title="Jobs">
+        <Card title="Jobs" icon={Briefcase}>
           <StatGrid>
-            <StatTile label="Open enquiries" value={String(data.openEnquiries)} sublabel="Sales pipeline" />
-            <StatTile label="Quotes awaiting action" value={String(data.quotesAwaitingAction)} />
-            <StatTile label="Active job value" value={formatCurrency(data.totalActiveJobValue)} />
-            <StatTile label="Est. profit (active)" value={formatCurrency(data.estimatedActiveProfit)} />
-            <StatTile label="Avg margin" value={formatPercent(data.avgActiveMarginPercent)} severity={data.severities.jobMargin} />
-            <StatTile label="Work in progress" value={formatCurrency(data.totalWip)} sublabel="Earned but not yet invoiced" />
+            <StatTile label="Open enquiries" value={String(data.openEnquiries)} sublabel="Sales pipeline" icon={Inbox} />
+            <StatTile label="Quotes awaiting action" value={String(data.quotesAwaitingAction)} icon={FileText} />
+            <StatTile label="Active job value" value={formatCurrency(data.totalActiveJobValue)} icon={Briefcase} />
+            <StatTile label="Est. profit (active)" value={formatCurrency(data.estimatedActiveProfit)} icon={TrendingUp} />
+            <StatTile
+              label="Avg margin"
+              value={formatPercent(data.avgActiveMarginPercent)}
+              severity={data.severities.jobMargin}
+              icon={Percent}
+            />
+            <StatTile
+              label="Work in progress"
+              value={formatCurrency(data.totalWip)}
+              sublabel="Earned but not yet invoiced"
+              icon={HardHat}
+            />
             <StatTile
               label="Over budget"
               value={String(data.jobsOverBudget.length)}
               severity={data.jobsOverBudget.length === 0 ? "green" : "orange"}
+              icon={AlertTriangle}
             />
             <StatTile
               label="Below target margin"
               value={String(data.jobsBelowMargin.length)}
               severity={data.jobsBelowMargin.length === 0 ? "green" : "red"}
+              icon={TrendingDown}
             />
           </StatGrid>
           <div className="mt-4 flex flex-wrap gap-4 text-sm font-medium">
@@ -193,28 +248,36 @@ export default async function DashboardPage() {
           </div>
         </Card>
 
-        <Card title="Cash">
+        <Card title="Cash" icon={Landmark}>
           <StatGrid>
-            <StatTile label="Bank balance" value={formatCurrency(data.currentBankBalance)} severity={data.severities.bankBalance} />
-            <StatTile label="Expected in (4 wks)" value={formatCurrency(data.cashExpectedIn4Weeks)} />
+            <StatTile
+              label="Bank balance"
+              value={formatCurrency(data.currentBankBalance)}
+              severity={data.severities.bankBalance}
+              icon={Landmark}
+            />
+            <StatTile label="Expected in (4 wks)" value={formatCurrency(data.cashExpectedIn4Weeks)} icon={TrendingUp} />
             <StatTile
               label="Outstanding invoices"
               value={formatCurrency(data.outstandingInvoices)}
               severity={data.severities.overdueInvoices}
               sublabel={data.overdueInvoiceTotal > 0 ? `${formatCurrency(data.overdueInvoiceTotal)} overdue` : undefined}
+              icon={FileWarning}
             />
-            <StatTile label="Wages due" value={formatCurrency(data.wagesDue)} sublabel="This week" />
-            <StatTile label="Super due" value={formatCurrency(data.superDue)} sublabel="This week" />
-            <StatTile label="Bills due" value={formatCurrency(data.billsDue)} sublabel="This week" />
+            <StatTile label="Wages due" value={formatCurrency(data.wagesDue)} sublabel="This week" icon={Banknote} />
+            <StatTile label="Super due" value={formatCurrency(data.superDue)} sublabel="This week" icon={PiggyBank} />
+            <StatTile label="Bills due" value={formatCurrency(data.billsDue)} sublabel="This week" icon={Receipt} />
             <StatTile
               label="Cash tied up in jobs"
               value={formatCurrency(data.cashTiedUpInJobs)}
               severity={data.severities.cashTiedUp}
+              icon={Coins}
             />
             <StatTile
               label="Forecast balance (4 wks)"
               value={formatCurrency(data.forecastBankBalance4Weeks)}
               severity={data.severities.bankBalance}
+              icon={LineChart}
             />
           </StatGrid>
           <div className="mt-4 rounded-lg bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:bg-slate-800/40 dark:text-slate-300">
@@ -229,50 +292,46 @@ export default async function DashboardPage() {
 
       {(data.jobsBelowMargin.length > 0 || data.jobsOverBudget.length > 0) && (
         <div className="mt-5">
-          <Card title="Jobs needing attention">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead>
-                  <tr className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">
-                    <th className="py-2 pr-4">Job</th>
-                    <th className="py-2 pr-4">Customer</th>
-                    <th className="py-2 pr-4">Forecast margin</th>
-                    <th className="py-2 pr-4">Cash position</th>
-                    <th className="py-2 pr-4">Issue</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {[...new Map([...data.jobsBelowMargin, ...data.jobsOverBudget].map((jf) => [jf.job.id, jf])).values()].map((jf) => (
-                    <tr key={jf.job.id} className="border-b border-slate-50 last:border-0 dark:border-slate-800/60">
-                      <td className="py-2 pr-4 font-medium">
-                        <Link href={`/jobs/${jf.job.id}`} className="text-blue-600 hover:underline">
-                          {jf.job.jobNumber}
-                        </Link>
-                      </td>
-                      <td className="py-2 pr-4">{jf.job.customer.name}</td>
-                      <td className="py-2 pr-4">
-                        <TrafficBadge
-                          severity={jf.belowTargetMargin ? "red" : "green"}
-                          label={formatPercent(jf.forecast.forecastMarginPercent, 1)}
-                        />
-                      </td>
-                      <td className="py-2 pr-4">
-                        <TrafficBadge severity={jf.heavyCashFunding ? "red" : "green"} label={formatCurrency(jf.cash.cashPosition)} />
-                      </td>
-                      <td className="py-2 pr-4 text-slate-500 dark:text-slate-400">
-                        {[
-                          jf.belowTargetMargin && "Below target margin",
-                          jf.overBudgetLabourHours && "Over budget on hours",
-                          jf.overBudgetMaterials && "Over budget on materials",
-                        ]
-                          .filter(Boolean)
-                          .join(", ")}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          <Card title="Jobs needing attention" icon={AlertTriangle}>
+            <Table>
+              <THead>
+                <Th>Job</Th>
+                <Th>Customer</Th>
+                <Th>Forecast margin</Th>
+                <Th>Cash position</Th>
+                <Th>Issue</Th>
+              </THead>
+              <tbody>
+                {[...new Map([...data.jobsBelowMargin, ...data.jobsOverBudget].map((jf) => [jf.job.id, jf])).values()].map((jf) => (
+                  <Tr key={jf.job.id}>
+                    <Td className="font-medium">
+                      <Link href={`/jobs/${jf.job.id}`} className="text-blue-600 hover:underline">
+                        {jf.job.jobNumber}
+                      </Link>
+                    </Td>
+                    <Td>{jf.job.customer.name}</Td>
+                    <Td>
+                      <TrafficBadge
+                        severity={jf.belowTargetMargin ? "red" : "green"}
+                        label={formatPercent(jf.forecast.forecastMarginPercent, 1)}
+                      />
+                    </Td>
+                    <Td>
+                      <TrafficBadge severity={jf.heavyCashFunding ? "red" : "green"} label={formatCurrency(jf.cash.cashPosition)} />
+                    </Td>
+                    <Td className="text-slate-500 dark:text-slate-400">
+                      {[
+                        jf.belowTargetMargin && "Below target margin",
+                        jf.overBudgetLabourHours && "Over budget on hours",
+                        jf.overBudgetMaterials && "Over budget on materials",
+                      ]
+                        .filter(Boolean)
+                        .join(", ")}
+                    </Td>
+                  </Tr>
+                ))}
+              </tbody>
+            </Table>
           </Card>
         </div>
       )}
