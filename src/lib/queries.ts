@@ -1,5 +1,5 @@
 import { prisma } from "./db";
-import { ACTIVE_JOB_STATUSES, OPEN_PO_STATUSES } from "./types";
+import { ACTIVE_JOB_STATUSES, OPEN_PO_STATUSES, OVERHEAD_CATEGORIES, OVERHEAD_CATEGORY_LABELS } from "./types";
 import {
   type AlertSeverity,
   type JobFinancials,
@@ -9,6 +9,8 @@ import {
   computeJobFinancials,
   employeeTrueCost,
   labourStats,
+  overheadMonthlyEquivalent,
+  payrollEntryCost,
   priceForMargin,
   trafficLight,
 } from "./calculations";
@@ -394,4 +396,70 @@ export async function getReportsData(): Promise<ReportsData> {
   }
 
   return { jobs, profitLoss, employeeProductivity };
+}
+
+export interface BudgetVsActualRow {
+  key: string;
+  label: string;
+  budget: number;
+  actual: number;
+  variance: number;
+  percentVariance: number;
+}
+
+export interface BudgetVsActualData {
+  monthStart: Date;
+  rows: BudgetVsActualRow[];
+  totalBudget: number;
+  totalActual: number;
+}
+
+function monthRow(key: string, label: string, budget: number, actual: number): BudgetVsActualRow {
+  const variance = actual - budget;
+  return { key, label, budget, actual, variance, percentVariance: budget > 0 ? (variance / budget) * 100 : 0 };
+}
+
+/**
+ * Budget = the Overheads register's monthly-equivalent (plus modelled wages/
+ * super) — i.e. what you already told the app you plan to spend. Actual =
+ * recorded Expenses (plus real payroll cost) for the selected month. This
+ * reuses the Overheads register and Expenses log rather than asking for a
+ * separate monthly budget figure per category.
+ */
+export async function getBudgetVsActual(monthStart: Date): Promise<BudgetVsActualData> {
+  const monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 1);
+
+  const [employees, overheads, expenses, payrollEntries] = await Promise.all([
+    getEmployees(true),
+    getOverheads(true),
+    prisma.expense.findMany({ where: { date: { gte: monthStart, lt: monthEnd } } }),
+    prisma.payrollEntry.findMany({ where: { weekCommencing: { gte: monthStart, lt: monthEnd } }, include: { employee: true } }),
+  ]);
+
+  const runningCosts = businessRunningCosts(employees, overheads);
+  const wagesBudget = (runningCosts.weeklyWages * 52) / 12;
+  const superBudget = (runningCosts.weeklySuper * 52) / 12;
+
+  let wagesActual = 0;
+  let superActual = 0;
+  for (const entry of payrollEntries) {
+    const cost = payrollEntryCost(entry.employee, entry);
+    wagesActual += cost.grossWages;
+    superActual += cost.super;
+  }
+
+  const rows: BudgetVsActualRow[] = [monthRow("WAGES", "Wages", wagesBudget, wagesActual), monthRow("SUPER", "Super", superBudget, superActual)];
+
+  for (const category of OVERHEAD_CATEGORIES) {
+    const categoryOverheads = overheads.filter((o) => o.category === category);
+    const budget = categoryOverheads.reduce((sum, o) => sum + overheadMonthlyEquivalent(o), 0);
+    const actual = expenses.filter((e) => e.category === category).reduce((sum, e) => sum + e.amount, 0);
+    if (budget === 0 && actual === 0) continue;
+    rows.push(monthRow(category, OVERHEAD_CATEGORY_LABELS[category], budget, actual));
+  }
+
+  const totalBudget = rows.reduce((sum, r) => sum + r.budget, 0);
+  const totalActual = rows.reduce((sum, r) => sum + r.actual, 0);
+
+  return { monthStart, rows, totalBudget, totalActual };
 }
