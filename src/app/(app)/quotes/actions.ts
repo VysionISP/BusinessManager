@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { logAudit } from "@/lib/audit";
+import { QUOTE_LINE_TYPES } from "@/lib/types";
 
 function str(formData: FormData, key: string): string | null {
   const v = String(formData.get(key) ?? "").trim();
@@ -144,6 +145,7 @@ export async function createNewVersion(id: number) {
     data: original.lines.map((l) => ({
       quoteId: newVersion.id,
       sectionId: l.sectionId ? (sectionIdMap.get(l.sectionId) ?? null) : null,
+      lineType: l.lineType,
       description: l.description,
       quantity: l.quantity,
       unit: l.unit,
@@ -219,7 +221,9 @@ export async function reorderSections(quoteId: number, orderedIds: number[]) {
 // ---------------------------------------------------------------------------
 
 function lineData(formData: FormData) {
+  const lineTypeRaw = str(formData, "lineType") ?? "MATERIAL";
   return {
+    lineType: (QUOTE_LINE_TYPES as readonly string[]).includes(lineTypeRaw) ? lineTypeRaw : "MATERIAL",
     description: str(formData, "description") ?? "",
     quantity: num(formData, "quantity", 1),
     unit: str(formData, "unit") ?? "item",
@@ -268,7 +272,19 @@ export async function convertQuoteToJob(id: number) {
   if (!quote) throw new Error("Quote not found");
 
   const totalPrice = quote.lines.reduce((sum, l) => sum + l.quantity * l.unitPrice * (1 - l.discountPercent / 100), 0);
-  const totalCost = quote.lines.reduce((sum, l) => sum + l.quantity * l.unitCost, 0);
+
+  // Split the budget by line type so the job starts with a real cost
+  // breakdown, not one lump sum. Labour hours come from labour-line
+  // quantities (the grid quotes labour in hours).
+  const costOf = (type: string) =>
+    quote.lines.filter((l) => l.lineType === type).reduce((sum, l) => sum + l.quantity * l.unitCost, 0);
+  const budgetLabourCost = costOf("LABOUR");
+  const budgetLabourHours = quote.lines
+    .filter((l) => l.lineType === "LABOUR")
+    .reduce((sum, l) => sum + l.quantity, 0);
+  const budgetMaterials = costOf("MATERIAL");
+  const budgetSubcontractors = costOf("SUBCONTRACT");
+  const budgetOtherDirectCosts = costOf("OTHER");
 
   const year = new Date().getFullYear();
   const count = await prisma.job.count();
@@ -284,7 +300,11 @@ export async function convertQuoteToJob(id: number) {
         status: "QUOTED",
         quoteDate: quote.issueDate ?? new Date(),
         quoteAmount: totalPrice,
-        budgetLabourCost: totalCost, // best available split — itemise further on the job once won
+        budgetLabourHours,
+        budgetLabourCost,
+        budgetMaterials,
+        budgetSubcontractors,
+        budgetOtherDirectCosts,
         percentComplete: 0,
       },
     });
@@ -304,4 +324,64 @@ export async function convertQuoteToJob(id: number) {
   revalidatePath("/jobs");
   revalidatePath("/");
   redirect(`/jobs/${job.id}`);
+}
+
+// ---------------------------------------------------------------------------
+// Object-based actions for the spreadsheet-style quote builder — the grid
+// autosaves as you type, so these take plain data instead of FormData.
+// ---------------------------------------------------------------------------
+
+export interface QuoteLineInput {
+  lineType: string;
+  description: string;
+  quantity: number;
+  unit: string;
+  unitCost: number;
+  unitPrice: number;
+  taxPercent: number;
+  discountPercent: number;
+}
+
+function cleanLineInput(data: QuoteLineInput) {
+  const n = (v: number) => (Number.isFinite(v) ? v : 0);
+  return {
+    lineType: (QUOTE_LINE_TYPES as readonly string[]).includes(data.lineType) ? data.lineType : "MATERIAL",
+    description: String(data.description ?? "").slice(0, 500),
+    quantity: n(data.quantity),
+    unit: String(data.unit || "item").slice(0, 20),
+    unitCost: n(data.unitCost),
+    unitPrice: n(data.unitPrice),
+    taxPercent: n(data.taxPercent),
+    discountPercent: n(data.discountPercent),
+  };
+}
+
+export async function saveQuoteLineInline(quoteId: number, lineId: number, data: QuoteLineInput) {
+  await prisma.quoteLine.update({ where: { id: lineId, quoteId }, data: cleanLineInput(data) });
+  revalidatePath(`/quotes/${quoteId}`);
+}
+
+export async function createQuoteLineInline(quoteId: number, sectionId: number, data: QuoteLineInput): Promise<{ id: number }> {
+  const existingCount = await prisma.quoteLine.count({ where: { sectionId } });
+  const line = await prisma.quoteLine.create({
+    data: { quoteId, sectionId, sortOrder: existingCount, ...cleanLineInput(data) },
+  });
+  revalidatePath(`/quotes/${quoteId}`);
+  return { id: line.id };
+}
+
+export async function updateSectionInline(
+  quoteId: number,
+  sectionId: number,
+  data: { name: string; description: string; displayMode: string },
+) {
+  await prisma.quoteSection.update({
+    where: { id: sectionId, quoteId },
+    data: {
+      name: String(data.name || "Section").slice(0, 200),
+      description: String(data.description ?? "").slice(0, 1000) || null,
+      displayMode: data.displayMode === "FIXED" ? "FIXED" : "ITEMIZED",
+    },
+  });
+  revalidatePath(`/quotes/${quoteId}`);
 }

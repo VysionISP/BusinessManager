@@ -136,6 +136,16 @@ export const QUOTE_STATUS_LABELS: Record<QuoteStatus, string> = {
   EXPIRED: "Expired",
 };
 
+export const QUOTE_LINE_TYPES = ["LABOUR", "MATERIAL", "SUBCONTRACT", "OTHER"] as const;
+export type QuoteLineType = (typeof QUOTE_LINE_TYPES)[number];
+
+export const QUOTE_LINE_TYPE_LABELS: Record<QuoteLineType, string> = {
+  LABOUR: "Labour",
+  MATERIAL: "Material",
+  SUBCONTRACT: "Subcontract",
+  OTHER: "Other",
+};
+
 export const QUOTE_SECTION_DISPLAY_MODES = ["ITEMIZED", "FIXED"] as const;
 export type QuoteSectionDisplayMode = (typeof QUOTE_SECTION_DISPLAY_MODES)[number];
 

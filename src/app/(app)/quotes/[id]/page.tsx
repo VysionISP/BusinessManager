@@ -4,14 +4,14 @@ import { Card } from "@/components/Card";
 import { PageHeader } from "@/components/PageHeader";
 import { Button, FormField } from "@/components/FormField";
 import { TrafficBadge } from "@/components/Badge";
-import { formatCurrency, formatDate, formatPercent } from "@/lib/format";
-import { quoteTotals, type QuoteLineLike } from "@/lib/calculations";
+import { formatDate } from "@/lib/format";
 import { QUOTE_STATUSES, QUOTE_STATUS_LABELS } from "@/lib/types";
 import { prisma } from "@/lib/db";
 import { AddSectionButton } from "../AddSectionButton";
-import { DraggableSections } from "../DraggableSections";
-import { SectionCard } from "../SectionCard";
+import { QuoteBuilder } from "../QuoteBuilder";
 import { addSection, acceptThisVersion, convertQuoteToJob, createNewVersion, deleteQuote, reorderSections, setQuoteStatus } from "../actions";
+import { breakEvenHourlyRate, businessRunningCosts, labourStats } from "@/lib/calculations";
+import { getEmployees, getOverheads, getSettings } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -38,6 +38,11 @@ export default async function QuoteDetailPage({ params }: { params: Promise<{ id
   });
   if (!quote) notFound();
 
+  const [employees, overheads, settings] = await Promise.all([getEmployees(true), getOverheads(true), getSettings()]);
+  const runningCosts = businessRunningCosts(employees, overheads);
+  const labour = labourStats(employees, overheads);
+  const breakEvenRate = breakEvenHourlyRate(runningCosts.totalWeeklyCost, labour.totalBillableHours);
+
   const siblingVersions = await prisma.quote.findMany({
     where: { quoteNumber: quote.quoteNumber },
     orderBy: { version: "desc" },
@@ -47,7 +52,6 @@ export default async function QuoteDetailPage({ params }: { params: Promise<{ id
   const acceptedVersion = siblingVersions.find((v) => v.status === "ACCEPTED");
   const isSuperseded = latestVersion.id !== quote.id;
 
-  const totals = quoteTotals(quote.lines as QuoteLineLike[]);
   const boundSetStatus = setQuoteStatus.bind(null, quoteId);
   const boundAddSection = addSection.bind(null, quoteId);
 
@@ -105,18 +109,32 @@ export default async function QuoteDetailPage({ params }: { params: Promise<{ id
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
-          <DraggableSections sectionIds={quote.sections.map((s) => s.id)} reorderAction={reorderSections.bind(null, quoteId)}>
-            {quote.sections.map((section, i) => (
-              <SectionCard
-                key={section.id}
-                quoteId={quoteId}
-                section={section}
-                lines={quote.lines.filter((l) => l.sectionId === section.id)}
-                canMoveUp={i > 0}
-                canMoveDown={i < quote.sections.length - 1}
-              />
-            ))}
-          </DraggableSections>
+          <QuoteBuilder
+            key={quote.sections.map((s) => s.id).join(",")}
+            quoteId={quoteId}
+            sections={quote.sections.map((section) => ({
+              id: section.id,
+              name: section.name,
+              description: section.description,
+              displayMode: section.displayMode,
+              lines: quote.lines
+                .filter((l) => l.sectionId === section.id)
+                .map((l) => ({
+                  id: l.id,
+                  lineType: l.lineType,
+                  description: l.description,
+                  quantity: l.quantity,
+                  unit: l.unit,
+                  unitCost: l.unitCost,
+                  unitPrice: l.unitPrice,
+                  taxPercent: l.taxPercent,
+                  discountPercent: l.discountPercent,
+                })),
+            }))}
+            breakEvenLabourRate={breakEvenRate}
+            targetMarginPercent={settings.targetMarginPercent}
+            reorderAction={reorderSections.bind(null, quoteId)}
+          />
           {quote.sections.length === 0 && (
             <Card>
               <p className="text-sm text-slate-400">No sections yet — add one to start building the quote.</p>
@@ -124,17 +142,6 @@ export default async function QuoteDetailPage({ params }: { params: Promise<{ id
           )}
 
           <AddSectionButton action={boundAddSection} />
-
-          <Card>
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-              <Stat label="Total cost" value={formatCurrency(totals.totalCost)} />
-              <Stat label="Subtotal" value={formatCurrency(totals.totalSell)} />
-              {totals.totalTax > 0 && <Stat label="Tax" value={formatCurrency(totals.totalTax)} />}
-              <Stat label={totals.totalTax > 0 ? "Total (incl. tax)" : "Total"} value={formatCurrency(totals.totalWithTax)} bold />
-              <Stat label="Profit" value={formatCurrency(totals.profit)} />
-              <Stat label="Margin" value={formatPercent(totals.marginPercent, 1)} />
-            </div>
-          </Card>
 
           {(quote.introduction || quote.scopeOfWork || quote.exclusions || quote.termsAndConditions) && (
             <Card title="Quote document">
@@ -162,6 +169,12 @@ export default async function QuoteDetailPage({ params }: { params: Promise<{ id
 
           <Card title="Actions">
             <div className="space-y-3">
+              <Link
+                href={`/quotes/${quoteId}/print`}
+                className="block w-full rounded-md border border-slate-300 px-4 py-2 text-center text-sm font-medium hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"
+              >
+                Preview / print for customer
+              </Link>
               <form action={createNewVersion.bind(null, quoteId)}>
                 <button type="submit" className="w-full rounded-md border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800">
                   + New Version
@@ -201,15 +214,6 @@ export default async function QuoteDetailPage({ params }: { params: Promise<{ id
           </Card>
         </div>
       </div>
-    </div>
-  );
-}
-
-function Stat({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
-  return (
-    <div>
-      <div className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">{label}</div>
-      <div className={bold ? "text-lg font-bold text-slate-900 dark:text-slate-50" : "font-semibold"}>{value}</div>
     </div>
   );
 }
