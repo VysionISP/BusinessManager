@@ -27,6 +27,7 @@ async function main() {
 
   await prisma.formSubmission.deleteMany();
   await prisma.formTemplate.deleteMany();
+  await prisma.timesheetEntry.deleteMany();
   await prisma.scheduleEvent.deleteMany();
   await prisma.payment.deleteMany();
   await prisma.invoice.deleteMany();
@@ -763,6 +764,57 @@ async function main() {
       { weekStarting: mondayOfWeek(9), direction: "IN", category: "Other income", description: "Insurance claim payout — vehicle repair", amount: 2200 },
     ],
   });
+
+  // -------------------------------------------------------------------------
+  // Timesheets — this week's daily hours for the two on-the-tools sparkies,
+  // posted to the Meadowbank job at each employee's loaded hourly rate.
+  const thisMonday = mondayOfWeek(0);
+  const loadedRate = (baseHourly: number, superPct: number, onCostPct: number, mult = 1) =>
+    baseHourly * mult * (1 + superPct / 100 + onCostPct / 100);
+
+  for (const [emp, days] of [
+    [dave, [8, 8, 8]],
+    [steve, [8, 6, 8]],
+  ] as const) {
+    for (let i = 0; i < days.length; i++) {
+      const date = new Date(thisMonday);
+      date.setDate(date.getDate() + i);
+      const hours = days[i];
+      const cost = await prisma.jobCostEntry.create({
+        data: {
+          jobId: meadowbank.id,
+          date,
+          category: "LABOUR",
+          description: `Timesheet — ${emp.name}`,
+          hours,
+          amount: hours * loadedRate(emp.baseHourlyRate, emp.superRatePercent, emp.onCostPercent),
+        },
+      });
+      await prisma.timesheetEntry.create({
+        data: {
+          employeeId: emp.id,
+          jobId: meadowbank.id,
+          date,
+          hours,
+          kind: "ORDINARY",
+          billable: true,
+          costEntryId: cost.id,
+        },
+      });
+    }
+  }
+  // A non-billable workshop afternoon for Mia, not against any job.
+  await prisma.timesheetEntry.create({
+    data: {
+      employeeId: mia.id,
+      date: thisMonday,
+      hours: 4,
+      kind: "ORDINARY",
+      billable: false,
+      notes: "Workshop — van stock and test gear calibration",
+    },
+  });
+  console.log("Timesheets seeded.");
 
   console.log("Cashflow adjustments seeded.");
   console.log(`Rossi (subcontractor) created with id ${rossi.id} — available for future job/labour allocation.`);

@@ -69,7 +69,38 @@ model Employee {
 
   payrollEntries     PayrollEntry[]
   scheduleEvents     ScheduleEvent[]
-  projectManagerJobs Job[]           @relation("ProjectManager")
+  timesheetEntries   TimesheetEntry[]
+  projectManagerJobs Job[]            @relation("ProjectManager")
+}
+
+// One person's hours on one day, optionally against a job/phase. This is the
+// single point of entry for labour: entries roll up into the weekly payroll
+// screen, and job-assigned ORDINARY/OVERTIME entries auto-post a matching
+// LABOUR JobCostEntry at the employee's loaded hourly rate, so job costing
+// and payroll never need the same hours typed twice.
+model TimesheetEntry {
+  id         Int       @id @default(autoincrement())
+  employeeId Int
+  employee   Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  jobId      Int?
+  job        Job?      @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  phaseId    Int?
+  phase      JobPhase? @relation(fields: [phaseId], references: [id], onDelete: SetNull)
+  date       DateTime
+  hours      Float
+  kind       String    @default("ORDINARY") // ORDINARY | OVERTIME | LEAVE | SICK
+  billable   Boolean   @default(true)
+  notes      String?
+  // The LABOUR cost auto-posted to the job for this entry, kept in sync on
+  // edit/delete. Locked (entry no longer editable) once that cost has been
+  // pulled onto a charge-up invoice.
+  costEntryId Int?          @unique
+  costEntry   JobCostEntry? @relation(fields: [costEntryId], references: [id], onDelete: SetNull)
+  createdAt   DateTime      @default(now())
+
+  @@index([employeeId, date])
+  @@index([jobId])
+  @@index([date])
 }
 
 model PayrollEntry {
@@ -337,6 +368,7 @@ model Job {
   scheduleEvents   ScheduleEvent[]
   quotes           Quote[]
   stockMovements   StockMovement[]
+  timesheetEntries TimesheetEntry[]
 
   @@index([customerId])
   @@index([status])
@@ -367,6 +399,7 @@ model JobPhase {
   purchaseOrders   PurchaseOrder[]
   supplierInvoices SupplierInvoice[]
   formSubmissions  FormSubmission[]
+  timesheetEntries TimesheetEntry[]
 
   @@index([jobId])
 }
@@ -413,6 +446,7 @@ model JobCostEntry {
   createdAt   DateTime  @default(now())
 
   supplierInvoice SupplierInvoice?
+  timesheetEntry  TimesheetEntry?
 
   @@index([jobId])
   @@index([phaseId])

@@ -8,7 +8,7 @@ import { addDays, formatWeekLabel, mondayOfWeek } from "@/lib/dates";
 import { formatCurrency, toDateInputValue } from "@/lib/format";
 import { getEmployees } from "@/lib/queries";
 import { prisma } from "@/lib/db";
-import { savePayrollWeek } from "./actions";
+import { fillPayrollFromTimesheets, savePayrollWeek } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -60,6 +60,15 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
         description="Enter each employee's actual hours for the week to calculate gross wages, super, on-costs and total payroll cost."
         actions={
           <div className="flex items-center gap-2 text-sm">
+            <form action={fillPayrollFromTimesheets.bind(null, toDateInputValue(weekStart))}>
+              <button
+                type="submit"
+                title="Overwrite this week's hours with the totals from the Timesheets screen"
+                className="rounded-md border border-indigo-300 px-3 py-1.5 font-medium text-indigo-600 hover:bg-indigo-50 dark:border-indigo-500/40 dark:hover:bg-indigo-500/10"
+              >
+                Fill from timesheets
+              </button>
+            </form>
             <Link href={`/payroll?week=${toDateInputValue(prevWeek)}`} className="rounded-md border border-slate-300 px-3 py-1.5 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800">
               ← Prev week
             </Link>

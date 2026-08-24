@@ -61,6 +61,72 @@ export function employeeTrueCost(e: EmployeeLike): EmployeeCost {
   return { grossWage, super: superAmt, onCosts, totalCost, costPerBillableHour };
 }
 
+// ---------------------------------------------------------------------------
+// Timesheets
+// ---------------------------------------------------------------------------
+
+export interface TimesheetEntryLike {
+  hours: number;
+  kind: string; // "ORDINARY" | "OVERTIME" | "LEAVE" | "SICK"
+  billable: boolean;
+}
+
+/**
+ * The fully-loaded cost of one hour of this employee's time — base pay
+ * (overtime-multiplied when kind is OVERTIME) plus super and other employer
+ * on-costs. This is the rate a timesheet entry posts to a job as LABOUR
+ * cost: what the hour genuinely costs the business, not what it's charged
+ * out at.
+ */
+export function employeeLoadedHourlyRate(e: EmployeeLike, kind: string = "ORDINARY"): number {
+  const base =
+    e.payType === "SALARY"
+      ? e.ordinaryHoursPerWeek > 0
+        ? (e.annualSalary ?? 0) / 52 / e.ordinaryHoursPerWeek
+        : 0
+      : e.baseHourlyRate;
+  const rate = kind === "OVERTIME" ? base * e.overtimeMultiplier : base;
+  return rate * (1 + e.superRatePercent / 100 + e.onCostPercent / 100);
+}
+
+export interface TimesheetWeekRollup {
+  ordinaryHours: number;
+  overtimeHours: number;
+  leaveHours: number;
+  sickHours: number;
+  billableHours: number;
+  nonBillableHours: number;
+}
+
+/**
+ * Roll one employee's timesheet entries for a week up into the hour buckets
+ * the weekly payroll screen uses, so payroll can be filled straight from
+ * timesheets instead of re-keying the same hours.
+ */
+export function timesheetWeekRollup(entries: TimesheetEntryLike[]): TimesheetWeekRollup {
+  const r: TimesheetWeekRollup = { ordinaryHours: 0, overtimeHours: 0, leaveHours: 0, sickHours: 0, billableHours: 0, nonBillableHours: 0 };
+  for (const e of entries) {
+    switch (e.kind) {
+      case "OVERTIME":
+        r.overtimeHours += e.hours;
+        break;
+      case "LEAVE":
+        r.leaveHours += e.hours;
+        break;
+      case "SICK":
+        r.sickHours += e.hours;
+        break;
+      default:
+        r.ordinaryHours += e.hours;
+    }
+    if (e.kind === "ORDINARY" || e.kind === "OVERTIME") {
+      if (e.billable) r.billableHours += e.hours;
+      else r.nonBillableHours += e.hours;
+    }
+  }
+  return r;
+}
+
 export interface PayrollEntryLike {
   ordinaryHours: number;
   overtimeHours: number;

@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  Clock,
   Banknote,
   BarChart3,
   Boxes,
@@ -73,6 +74,7 @@ const NAV: NavItem[] = [
     links: [
       { href: "/jobs", label: "All jobs", icon: Briefcase },
       { href: "/scheduling", label: "Scheduling", icon: CalendarDays },
+      { href: "/timesheets", label: "Timesheets", icon: Clock },
     ],
   },
   { href: "/stock", label: "Stock", icon: Boxes },

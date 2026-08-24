@@ -6,6 +6,7 @@ import {
   businessRunningCosts,
   committedCost,
   daysOverdue,
+  employeeLoadedHourlyRate,
   employeeTrueCost,
   invoiceLinesTotal,
   invoiceLineTotal,
@@ -21,9 +22,71 @@ import {
   quoteDirectCost,
   quoteTotals,
   retentionHeld,
+  timesheetWeekRollup,
   variationProfit,
   variationSellPrice,
 } from "./calculations";
+
+const hourlySparky = {
+  payType: "HOURLY",
+  baseHourlyRate: 40,
+  annualSalary: null,
+  ordinaryHoursPerWeek: 38,
+  overtimeHoursPerWeek: 0,
+  overtimeMultiplier: 1.5,
+  weeklyAllowances: 0,
+  superRatePercent: 11.5,
+  onCostPercent: 15,
+  expectedBillableHoursPerWeek: 32,
+  chargeOutRate: 110,
+};
+
+describe("employeeLoadedHourlyRate", () => {
+  it("loads super and on-costs onto the base hourly rate", () => {
+    // 40 * (1 + 0.115 + 0.15) = 50.60
+    expect(employeeLoadedHourlyRate(hourlySparky)).toBeCloseTo(50.6);
+  });
+
+  it("applies the overtime multiplier for OVERTIME hours", () => {
+    expect(employeeLoadedHourlyRate(hourlySparky, "OVERTIME")).toBeCloseTo(40 * 1.5 * 1.265);
+  });
+
+  it("derives an hourly base from salary / 52 / ordinary hours for salaried staff", () => {
+    const salaried = { ...hourlySparky, payType: "SALARY", baseHourlyRate: 0, annualSalary: 118560 };
+    // 118560 / 52 / 38 = 60/hr base
+    expect(employeeLoadedHourlyRate(salaried)).toBeCloseTo(60 * 1.265);
+  });
+
+  it("returns 0 for a salaried employee with no ordinary hours rather than dividing by zero", () => {
+    const odd = { ...hourlySparky, payType: "SALARY", annualSalary: 100000, ordinaryHoursPerWeek: 0 };
+    expect(employeeLoadedHourlyRate(odd)).toBe(0);
+  });
+});
+
+describe("timesheetWeekRollup", () => {
+  it("buckets entries into the payroll hour categories", () => {
+    const rollup = timesheetWeekRollup([
+      { hours: 8, kind: "ORDINARY", billable: true },
+      { hours: 6, kind: "ORDINARY", billable: true },
+      { hours: 2, kind: "ORDINARY", billable: false }, // workshop day
+      { hours: 3, kind: "OVERTIME", billable: true },
+      { hours: 8, kind: "LEAVE", billable: false },
+      { hours: 4, kind: "SICK", billable: false },
+    ]);
+    expect(rollup.ordinaryHours).toBe(16);
+    expect(rollup.overtimeHours).toBe(3);
+    expect(rollup.leaveHours).toBe(8);
+    expect(rollup.sickHours).toBe(4);
+    expect(rollup.billableHours).toBe(17);
+    expect(rollup.nonBillableHours).toBe(2);
+  });
+
+  it("never counts leave or sick hours as billable or non-billable work", () => {
+    const rollup = timesheetWeekRollup([{ hours: 8, kind: "LEAVE", billable: true }]);
+    expect(rollup.billableHours).toBe(0);
+    expect(rollup.nonBillableHours).toBe(0);
+  });
+});
 
 describe("employeeTrueCost", () => {
   it("adds super and on-costs on top of gross wage for hourly employees", () => {

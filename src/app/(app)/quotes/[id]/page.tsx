@@ -181,10 +181,14 @@ export default async function QuoteDetailPage({ params }: { params: Promise<{ id
                   <button
                     type="submit"
                     disabled={quote.lines.length === 0}
-                    className="w-full rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+                    title={quote.lines.length === 0 ? "Add at least one line item before converting this quote to a job" : undefined}
+                    className="w-full rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     Convert to job
                   </button>
+                  {quote.lines.length === 0 && (
+                    <p className="mt-1.5 text-xs text-slate-400">Add at least one line item first.</p>
+                  )}
                 </form>
               )}
             </div>

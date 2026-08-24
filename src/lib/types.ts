@@ -22,6 +22,16 @@ export type EmployeeType = (typeof EMPLOYEE_TYPES)[number];
 export const PAY_TYPES = ["HOURLY", "SALARY"] as const;
 export type PayType = (typeof PAY_TYPES)[number];
 
+export const TIMESHEET_KINDS = ["ORDINARY", "OVERTIME", "LEAVE", "SICK"] as const;
+export type TimesheetKind = (typeof TIMESHEET_KINDS)[number];
+
+export const TIMESHEET_KIND_LABELS: Record<TimesheetKind, string> = {
+  ORDINARY: "Ordinary",
+  OVERTIME: "Overtime",
+  LEAVE: "Leave",
+  SICK: "Sick",
+};
+
 export const OVERHEAD_CATEGORIES = [
   "INSURANCE",
   "VEHICLES",

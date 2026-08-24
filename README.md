@@ -48,6 +48,11 @@ A full job-management system in the spirit of Fergus, built around the core prin
   doubles as certificates when flagged; fill any active template out against a job.
 - **Employees & Payroll** — true weekly cost (gross wage + super + on-costs) and true cost per
   billable hour; a weekly payroll screen auto-calculating wages/super/on-costs from actual hours.
+- **Timesheets** — daily hours per person, entered once: entries roll straight up into the weekly
+  payroll screen ("Fill from timesheets"), and any hours logged against a job automatically post
+  that job's LABOUR cost at the employee's *loaded* hourly rate (base pay + super + on-costs,
+  overtime-multiplied) — so job costing and payroll never need the same hours typed twice. Entries
+  whose posted cost has been pulled onto a charge-up invoice lock automatically.
 - **Overheads register** — every expense category from the spec, converted to weekly/monthly/annual
   equivalents. This is the *planned/recurring* model used for the break-even rate.
 - **Expenses** — actual, dated general-business spend that feeds the management P&L, separate from

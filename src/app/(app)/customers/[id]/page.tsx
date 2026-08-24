@@ -157,7 +157,7 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
                 <div key={a.id} className="rounded-lg border border-slate-100 p-3 text-sm dark:border-slate-800">
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-medium">
-                      {a.type} {a.location && `— ${a.location}`}
+                      {a.type} {a.assetNumber && `(${a.assetNumber})`} {a.location && `— ${a.location}`}
                     </span>
                     <form action={deleteAsset.bind(null, customerId, a.id)}>
                       <button type="submit" className="text-xs text-rose-600 hover:underline">

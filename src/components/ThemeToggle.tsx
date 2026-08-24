@@ -1,8 +1,22 @@
 "use client";
 
+import { useLayoutEffect } from "react";
 import { Moon, Sun } from "lucide-react";
 
 export function ThemeToggle() {
+  // In development, React's Strict Mode remount resets <html> to the
+  // attributes it manages from JSX, clearing the .dark class the init
+  // script set — re-apply it before paint. No-op in production.
+  useLayoutEffect(() => {
+    try {
+      const stored = localStorage.getItem("theme");
+      const dark = stored ? stored === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+      document.documentElement.classList.toggle("dark", dark);
+    } catch {
+      // localStorage/matchMedia unavailable — keep whatever theme is applied
+    }
+  }, []);
+
   function toggle() {
     const next = !document.documentElement.classList.contains("dark");
     document.documentElement.classList.toggle("dark", next);
