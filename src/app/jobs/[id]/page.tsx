@@ -11,6 +11,7 @@ import { CostEntryForm } from "./CostEntryForm";
 import { InvoiceForm } from "./InvoiceForm";
 import { InvoiceRow } from "./InvoiceRow";
 import { PhaseList } from "./PhaseList";
+import { VariationList } from "./VariationList";
 import {
   addCostEntry,
   addInvoice,
@@ -163,6 +164,10 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
 
           <Card title="Job phases">
             <PhaseList jobId={jobId} phases={job.phases} costEntries={job.costEntries} />
+          </Card>
+
+          <Card title="Variations">
+            <VariationList jobId={jobId} variations={job.variations} />
           </Card>
 
           <Card title="Actual costs">

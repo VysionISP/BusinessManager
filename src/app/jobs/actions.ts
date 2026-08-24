@@ -192,3 +192,57 @@ export async function deletePhase(jobId: number, phaseId: number) {
   await prisma.jobPhase.delete({ where: { id: phaseId } });
   revalidatePath(`/jobs/${jobId}`);
 }
+
+function variationData(formData: FormData) {
+  return {
+    title: str(formData, "title"),
+    scope: str(formData, "scope"),
+    reason: str(formData, "reason") || null,
+    requestedBy: str(formData, "requestedBy") || null,
+    requestDate: dateOrNull(formData, "requestDate"),
+    labourAllowance: num(formData, "labourAllowance"),
+    materialAllowance: num(formData, "materialAllowance"),
+    subcontractorAllowance: num(formData, "subcontractorAllowance"),
+    otherAllowance: num(formData, "otherAllowance"),
+    markupPercent: num(formData, "markupPercent", 20),
+    sellPriceOverride: formData.get("sellPriceOverride") ? num(formData, "sellPriceOverride") : null,
+  };
+}
+
+export async function addVariation(jobId: number, formData: FormData) {
+  const existingCount = await prisma.variation.count({ where: { jobId } });
+  await prisma.variation.create({
+    data: {
+      jobId,
+      variationNumber: `V-${existingCount + 1}`,
+      status: "PENDING",
+      customerApproved: false,
+      ...variationData(formData),
+    },
+  });
+  revalidatePath(`/jobs/${jobId}`);
+  revalidatePath("/jobs");
+  revalidatePath("/");
+}
+
+export async function setVariationStatus(jobId: number, variationId: number, formData: FormData) {
+  const status = str(formData, "status") || "PENDING";
+  await prisma.variation.update({
+    where: { id: variationId },
+    data: {
+      status,
+      customerApproved: status === "APPROVED",
+      approvedDate: status === "APPROVED" ? new Date() : null,
+    },
+  });
+  revalidatePath(`/jobs/${jobId}`);
+  revalidatePath("/jobs");
+  revalidatePath("/");
+}
+
+export async function deleteVariation(jobId: number, variationId: number) {
+  await prisma.variation.delete({ where: { id: variationId } });
+  revalidatePath(`/jobs/${jobId}`);
+  revalidatePath("/jobs");
+  revalidatePath("/");
+}

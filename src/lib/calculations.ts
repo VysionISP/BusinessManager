@@ -326,6 +326,38 @@ export function quoteAtMargins(directJobCost: number, marginPercents: number[]):
 }
 
 // ---------------------------------------------------------------------------
+// Formal (saved, versioned) quotes — line-item based, distinct from the
+// quick break-even quote calculator above.
+// ---------------------------------------------------------------------------
+
+export interface QuoteLineLike {
+  quantity: number;
+  unitCost: number;
+  unitPrice: number;
+}
+
+export function quoteLineCost(l: QuoteLineLike): number {
+  return l.quantity * l.unitCost;
+}
+
+export function quoteLineSell(l: QuoteLineLike): number {
+  return l.quantity * l.unitPrice;
+}
+
+export interface QuoteTotals {
+  totalCost: number;
+  totalSell: number;
+  profit: number;
+  marginPercent: number;
+}
+
+export function quoteTotals(lines: QuoteLineLike[]): QuoteTotals {
+  const totalCost = lines.reduce((sum, l) => sum + quoteLineCost(l), 0);
+  const totalSell = lines.reduce((sum, l) => sum + quoteLineSell(l), 0);
+  return { totalCost, totalSell, profit: totalSell - totalCost, marginPercent: marginFromPrice(totalCost, totalSell) };
+}
+
+// ---------------------------------------------------------------------------
 // Job budget, actual, forecast & WIP
 // ---------------------------------------------------------------------------
 

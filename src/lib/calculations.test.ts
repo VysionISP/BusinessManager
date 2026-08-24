@@ -16,6 +16,7 @@ import {
   purchaseOrderTotal,
   quoteAtMargins,
   quoteDirectCost,
+  quoteTotals,
   variationProfit,
   variationSellPrice,
 } from "./calculations";
@@ -114,6 +115,19 @@ describe("quote calculator", () => {
       expect(prices[i]).toBeGreaterThan(prices[i - 1]);
     }
     expect(quotes[2].price).toBeCloseTo(12500); // 20% margin
+  });
+});
+
+describe("quoteTotals", () => {
+  it("sums line cost/sell and computes margin from the totals", () => {
+    const totals = quoteTotals([
+      { quantity: 10, unitCost: 20, unitPrice: 30 }, // cost 200, sell 300
+      { quantity: 2, unitCost: 100, unitPrice: 140 }, // cost 200, sell 280
+    ]);
+    expect(totals.totalCost).toBe(400);
+    expect(totals.totalSell).toBe(580);
+    expect(totals.profit).toBe(180);
+    expect(totals.marginPercent).toBeCloseTo((180 / 580) * 100);
   });
 });
 
