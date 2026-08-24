@@ -8,9 +8,10 @@ import { formatCurrency, formatDate, formatPercent } from "@/lib/format";
 import { quoteTotals, type QuoteLineLike } from "@/lib/calculations";
 import { QUOTE_STATUSES, QUOTE_STATUS_LABELS } from "@/lib/types";
 import { prisma } from "@/lib/db";
+import { AddSectionButton } from "../AddSectionButton";
+import { DraggableSections } from "../DraggableSections";
 import { SectionCard } from "../SectionCard";
-import { addSection, acceptThisVersion, convertQuoteToJob, createNewVersion, deleteQuote, setQuoteStatus } from "../actions";
-import { SectionForm } from "../SectionForm";
+import { addSection, acceptThisVersion, convertQuoteToJob, createNewVersion, deleteQuote, reorderSections, setQuoteStatus } from "../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -104,28 +105,25 @@ export default async function QuoteDetailPage({ params }: { params: Promise<{ id
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
-          {quote.sections.map((section, i) => (
-            <SectionCard
-              key={section.id}
-              quoteId={quoteId}
-              section={section}
-              lines={quote.lines.filter((l) => l.sectionId === section.id)}
-              canMoveUp={i > 0}
-              canMoveDown={i < quote.sections.length - 1}
-            />
-          ))}
+          <DraggableSections sectionIds={quote.sections.map((s) => s.id)} reorderAction={reorderSections.bind(null, quoteId)}>
+            {quote.sections.map((section, i) => (
+              <SectionCard
+                key={section.id}
+                quoteId={quoteId}
+                section={section}
+                lines={quote.lines.filter((l) => l.sectionId === section.id)}
+                canMoveUp={i > 0}
+                canMoveDown={i < quote.sections.length - 1}
+              />
+            ))}
+          </DraggableSections>
           {quote.sections.length === 0 && (
             <Card>
               <p className="text-sm text-slate-400">No sections yet — add one to start building the quote.</p>
             </Card>
           )}
 
-          <details className="rounded-xl border border-dashed border-slate-300 px-4 py-3 dark:border-slate-700">
-            <summary className="cursor-pointer text-sm font-medium text-indigo-600">+ Add section</summary>
-            <div className="mt-3 max-w-md">
-              <SectionForm action={boundAddSection} submitLabel="Add section" />
-            </div>
-          </details>
+          <AddSectionButton action={boundAddSection} />
 
           <Card>
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
