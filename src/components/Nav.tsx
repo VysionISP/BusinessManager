@@ -8,6 +8,7 @@ const LINKS = [
   { href: "/employees", label: "Employees" },
   { href: "/payroll", label: "Payroll" },
   { href: "/overheads", label: "Overheads" },
+  { href: "/expenses", label: "Expenses" },
   { href: "/break-even", label: "Break-even" },
   { href: "/quotes", label: "Quote calculator" },
   { href: "/jobs", label: "Jobs" },

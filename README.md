@@ -20,7 +20,10 @@ two concepts are never confused.
 - **Employees** — true weekly cost (gross wage + super + on-costs) and true cost per billable hour.
 - **Weekly payroll** — actual hours per employee per week, auto-calculating wages/super/on-costs.
 - **Overheads register** — every expense category from the spec, converted to weekly/monthly/annual
-  equivalents regardless of how it's billed.
+  equivalents regardless of how it's billed. This is the *planned/recurring* model used to work out
+  the break-even rate (insurance, rego, subscriptions, etc.).
+- **Expenses** — actual, dated general-business spend (not tied to a job) that feeds straight into
+  the management P&L, separate from the planned overheads register above.
 - **Break-even calculator** — total weekly running cost ÷ billable hours = break-even rate, plus a
   target-margin calculator (margin, not markup).
 - **Quote calculator** — direct job cost at the current break-even labour rate, quoted at 10/15/20/25/30%
@@ -61,11 +64,13 @@ the job detail page, and the reports page can never silently disagree with each 
 
 ```bash
 cp .env.example .env         # local SQLite file, nothing secret in it
-npm install                 # also runs `prisma generate`
-npm run db:migrate           # apply the schema (creates prisma/dev.db)
-npm run db:seed              # load realistic sample data (employees, jobs, invoices, payroll history)
+npm install                  # also runs `prisma generate`
+npm run db:migrate           # apply the schema (creates prisma/dev.db, starts empty)
 npm run dev                  # http://localhost:3000
 ```
+
+That's it — the database starts completely empty, ready for your own employees, overheads, jobs
+and expenses. Add your real data through the app itself (Employees, Overheads, Jobs, etc.).
 
 Other useful commands:
 
@@ -74,8 +79,23 @@ npm test                     # run the calculation engine's unit tests
 npm run build                # production build + typecheck
 ```
 
-The seed data intentionally includes jobs that are over budget, below target margin, and carrying
-an overdue invoice, so the dashboard and alerts have something real to show out of the box.
+### Loading demo data instead
+
+If you'd rather explore the app with realistic sample data first (employees, jobs at every stage,
+invoices, an overdue payment, payroll history), run:
+
+```bash
+npm run db:seed
+```
+
+This **wipes and replaces everything** in the database with the demo dataset — don't run it once
+you've started entering real data. To go back to a clean slate at any point (demo data or your own),
+delete the local database file and re-apply the schema:
+
+```bash
+rm prisma/dev.db
+npm run db:migrate
+```
 
 ## Data model
 

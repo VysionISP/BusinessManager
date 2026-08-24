@@ -81,11 +81,14 @@ export default async function ReportsPage() {
               <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
               <Row label="Gross profit" value={formatCurrency(pl.grossProfit)} bold />
               <Row label="Gross profit margin" value={formatPercent(pl.grossProfitMarginPercent, 1)} sub />
-              <Row label="Business overheads (monthly)" value={`(${formatCurrency(pl.overheads)})`} sub />
+              <Row label="Business overheads (recorded expenses)" value={`(${formatCurrency(pl.overheads)})`} sub />
               <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
               <Row label="Operating profit" value={formatCurrency(pl.operatingProfit)} bold />
               <Row label="Net operating margin" value={formatPercent(pl.netOperatingMarginPercent, 1)} sub />
             </div>
+            <Link href="/expenses" className="mt-4 inline-block text-sm font-medium text-blue-600 hover:underline">
+              Manage expenses →
+            </Link>
           </Card>
 
           <Card title="Employee productivity (last 4 payroll weeks recorded)">

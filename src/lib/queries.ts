@@ -280,10 +280,10 @@ export interface ReportsData {
 }
 
 export async function getReportsData(): Promise<ReportsData> {
-  const [jobs, employees, overheads, payrollEntries] = await Promise.all([
+  const [jobs, employees, expenses, payrollEntries] = await Promise.all([
     getAllJobFinancials(),
     getEmployees(true),
-    getOverheads(true),
+    prisma.expense.findMany(),
     prisma.payrollEntry.findMany({ include: { employee: true } }),
   ]);
 
@@ -295,9 +295,8 @@ export async function getReportsData(): Promise<ReportsData> {
   const otherDirect = closedOrActive.reduce((sum, jf) => sum + jf.actual.equipment + jf.actual.other, 0);
   const directCosts = labour + materials + subcontractors + otherDirect;
   const grossProfit = revenue - directCosts;
-  const runningCosts = businessRunningCosts(employees, overheads);
-  const overheadsMonthly = runningCosts.monthlyCost - (runningCosts.weeklyWages + runningCosts.weeklySuper + runningCosts.weeklyOnCosts) * (52 / 12);
-  const operatingProfit = grossProfit - overheadsMonthly;
+  const overheadExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
+  const operatingProfit = grossProfit - overheadExpenses;
 
   const profitLoss = {
     revenue,
@@ -308,7 +307,7 @@ export async function getReportsData(): Promise<ReportsData> {
     directCosts,
     grossProfit,
     grossProfitMarginPercent: revenue > 0 ? (grossProfit / revenue) * 100 : 0,
-    overheads: overheadsMonthly,
+    overheads: overheadExpenses,
     operatingProfit,
     netOperatingMarginPercent: revenue > 0 ? (operatingProfit / revenue) * 100 : 0,
   };

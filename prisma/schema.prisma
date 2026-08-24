@@ -72,6 +72,21 @@ model OverheadExpense {
   createdAt DateTime @default(now())
 }
 
+// Actual, dated general-business expense transactions (not tied to a job —
+// see JobCostEntry for job costs). Distinct from OverheadExpense, which is
+// a *planned/recurring* register used to model the break-even rate; Expense
+// is what was genuinely spent, and feeds the management P&L.
+model Expense {
+  id          Int      @id @default(autoincrement())
+  date        DateTime
+  category    String // same categories as OverheadExpense
+  description String
+  amount      Float
+  createdAt   DateTime @default(now())
+
+  @@index([date])
+}
+
 model Job {
   id                     Int       @id @default(autoincrement())
   jobNumber              String    @unique
