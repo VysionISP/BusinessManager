@@ -47,6 +47,26 @@ export default async function SettingsPage() {
             defaultValue={settings.openingBankBalance}
             hint="Update this to today's actual balance — it's the starting point for the cashflow forecast."
           />
+          <label className="block text-sm">
+            <span className="font-medium text-slate-700 dark:text-slate-300">Default quote introduction</span>
+            <textarea
+              name="defaultQuoteIntroduction"
+              defaultValue={settings.defaultQuoteIntroduction ?? ""}
+              rows={3}
+              className="mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm dark:border-slate-700 dark:bg-slate-800"
+            />
+            <span className="mt-1 block text-xs text-slate-400">Pre-filled onto every new quote — edit per quote as needed.</span>
+          </label>
+          <label className="block text-sm">
+            <span className="font-medium text-slate-700 dark:text-slate-300">Default quote terms &amp; conditions</span>
+            <textarea
+              name="defaultQuoteTerms"
+              defaultValue={settings.defaultQuoteTerms ?? ""}
+              rows={5}
+              className="mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm dark:border-slate-700 dark:bg-slate-800"
+            />
+            <span className="mt-1 block text-xs text-slate-400">Printed on the customer copy of every quote unless overridden.</span>
+          </label>
           <FormActions>
             <Button>Save settings</Button>
           </FormActions>

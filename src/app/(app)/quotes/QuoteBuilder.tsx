@@ -56,6 +56,8 @@ export interface QuoteBuilderProps {
   breakEvenLabourRate: number;
   /** Business target profit margin % — used to suggest a price when a cost is entered. */
   targetMarginPercent: number;
+  /** Active stock items — description cells autocomplete from this price list. */
+  priceList: { name: string; unit: string; unitCost: number }[];
   reorderAction: (orderedIds: number[]) => void;
 }
 
@@ -88,7 +90,7 @@ const lineMarkup = (l: LineState) => (l.unitCost > 0 ? ((l.unitPrice - l.unitCos
 const isRealRow = (l: LineState) =>
   l.description.trim() !== "" || l.unitCost !== 0 || l.unitPrice !== 0 || l.id !== null;
 
-export function QuoteBuilder({ quoteId, sections, breakEvenLabourRate, targetMarginPercent, reorderAction }: QuoteBuilderProps) {
+export function QuoteBuilder({ quoteId, sections, breakEvenLabourRate, targetMarginPercent, priceList, reorderAction }: QuoteBuilderProps) {
   const [state, setState] = useState<SectionState[]>(() =>
     sections.map((s) => ({
       id: s.id,
@@ -248,6 +250,13 @@ export function QuoteBuilder({ quoteId, sections, breakEvenLabourRate, targetMar
 
   return (
     <div className="space-y-4">
+      {priceList.length > 0 && (
+        <datalist id="quote-price-list">
+          {priceList.map((p) => (
+            <option key={p.name} value={p.name} />
+          ))}
+        </datalist>
+      )}
       <DraggableSections sectionIds={state.map((s) => s.id)} reorderAction={reorderAction}>
         {state.map((section) => {
           const realLines = section.lines.filter(isRealRow);
@@ -338,7 +347,22 @@ export function QuoteBuilder({ quoteId, sections, breakEvenLabourRate, targetMar
                             <input
                               value={line.description}
                               placeholder={blank ? "Type to add a line…" : ""}
-                              onChange={(e) => updateLine(section.id, line.key, { description: e.target.value })}
+                              list="quote-price-list"
+                              onChange={(e) => {
+                                const description = e.target.value;
+                                const patch: Partial<LineState> = { description };
+                                // Picking a stock item from the price list
+                                // fills its cost/unit and prices at margin.
+                                const item = priceList.find((p) => p.name === description);
+                                if (item && line.unitCost === 0) {
+                                  patch.unitCost = item.unitCost;
+                                  patch.unit = item.unit || line.unit;
+                                  if (line.unitPrice === 0 && item.unitCost > 0) {
+                                    patch.unitPrice = Number(priceFromMargin(item.unitCost, targetMarginPercent).toFixed(2));
+                                  }
+                                }
+                                updateLine(section.id, line.key, patch);
+                              }}
                               className={cellClass}
                               aria-label="Description"
                             />

@@ -41,18 +41,22 @@ function quoteHeaderData(formData: FormData) {
 
 async function nextQuoteNumber(): Promise<string> {
   const year = new Date().getFullYear();
-  const count = await prisma.quote.count({ where: { version: 1 } });
+  const count = await prisma.quote.count({ where: { version: 1, isTemplate: false } });
   return `Q-${year}-${String(count + 1).padStart(3, "0")}`;
 }
 
 export async function createQuote(formData: FormData) {
   const quoteNumber = await nextQuoteNumber();
+  const header = quoteHeaderData(formData);
+  const settings = await prisma.settings.findFirst();
+  if (!header.introduction && settings?.defaultQuoteIntroduction) header.introduction = settings.defaultQuoteIntroduction;
+  if (!header.termsAndConditions && settings?.defaultQuoteTerms) header.termsAndConditions = settings.defaultQuoteTerms;
   const quote = await prisma.quote.create({
     data: {
       quoteNumber,
       version: 1,
       status: "DRAFT",
-      ...quoteHeaderData(formData),
+      ...header,
       sections: { create: [{ name: "Section 1", displayMode: "ITEMIZED", sortOrder: 0 }] },
     },
   });
@@ -61,7 +65,12 @@ export async function createQuote(formData: FormData) {
 }
 
 export async function updateQuote(id: number, formData: FormData) {
-  await prisma.quote.update({ where: { id }, data: quoteHeaderData(formData) });
+  const existing = await prisma.quote.findUnique({ where: { id }, select: { isTemplate: true } });
+  const header = quoteHeaderData(formData);
+  // Templates have no customer/site — the edit form is reused for their
+  // title/terms, but must not attach a customer.
+  const data = existing?.isTemplate ? { ...header, customerId: null, siteId: null } : header;
+  await prisma.quote.update({ where: { id }, data });
   revalidatePath("/quotes");
   revalidatePath(`/quotes/${id}`);
   redirect(`/quotes/${id}`);
@@ -270,6 +279,8 @@ export async function moveQuoteLine(quoteId: number, sectionId: number, lineId: 
 export async function convertQuoteToJob(id: number) {
   const quote = await prisma.quote.findUnique({ where: { id }, include: { lines: true } });
   if (!quote) throw new Error("Quote not found");
+  const customerId = quote.customerId;
+  if (quote.isTemplate || customerId === null) throw new Error("Templates cannot be converted to jobs — create a quote from the template first");
 
   const totalPrice = quote.lines.reduce((sum, l) => sum + l.quantity * l.unitPrice * (1 - l.discountPercent / 100), 0);
 
@@ -294,7 +305,7 @@ export async function convertQuoteToJob(id: number) {
     prisma.job.create({
       data: {
         jobNumber: num,
-        customerId: quote.customerId,
+        customerId,
         siteId: quote.siteId,
         description: quote.title,
         status: "QUOTED",
@@ -384,4 +395,140 @@ export async function updateSectionInline(
     },
   });
   revalidatePath(`/quotes/${quoteId}`);
+}
+
+// ---------------------------------------------------------------------------
+// Templates & duplication
+// ---------------------------------------------------------------------------
+
+async function nextTemplateNumber(): Promise<string> {
+  const count = await prisma.quote.count({ where: { isTemplate: true } });
+  return `TPL-${String(count + 1).padStart(3, "0")}`;
+}
+
+/** Deep-copy a quote's sections + lines onto another quote. */
+async function copySectionsAndLines(fromQuoteId: number, toQuoteId: number) {
+  const from = await prisma.quote.findUnique({
+    where: { id: fromQuoteId },
+    include: { sections: { orderBy: { sortOrder: "asc" } }, lines: { orderBy: { sortOrder: "asc" } } },
+  });
+  if (!from) return;
+  const sectionIdMap = new Map<number, number>();
+  for (const section of from.sections) {
+    const created = await prisma.quoteSection.create({
+      data: {
+        quoteId: toQuoteId,
+        name: section.name,
+        description: section.description,
+        displayMode: section.displayMode,
+        sortOrder: section.sortOrder,
+      },
+    });
+    sectionIdMap.set(section.id, created.id);
+  }
+  if (from.lines.length > 0) {
+    await prisma.quoteLine.createMany({
+      data: from.lines.map((l) => ({
+        quoteId: toQuoteId,
+        sectionId: l.sectionId ? (sectionIdMap.get(l.sectionId) ?? null) : null,
+        lineType: l.lineType,
+        description: l.description,
+        quantity: l.quantity,
+        unit: l.unit,
+        unitCost: l.unitCost,
+        unitPrice: l.unitPrice,
+        taxPercent: l.taxPercent,
+        discountPercent: l.discountPercent,
+        sortOrder: l.sortOrder,
+      })),
+    });
+  }
+}
+
+export async function createBlankTemplate() {
+  const template = await prisma.quote.create({
+    data: {
+      quoteNumber: await nextTemplateNumber(),
+      version: 1,
+      isTemplate: true,
+      status: "DRAFT",
+      title: "New template",
+      sections: { create: [{ name: "Section 1", displayMode: "ITEMIZED", sortOrder: 0 }] },
+    },
+  });
+  revalidatePath("/quotes");
+  redirect(`/quotes/${template.id}`);
+}
+
+export async function saveQuoteAsTemplate(id: number) {
+  const quote = await prisma.quote.findUnique({ where: { id } });
+  if (!quote) throw new Error("Quote not found");
+  const template = await prisma.quote.create({
+    data: {
+      quoteNumber: await nextTemplateNumber(),
+      version: 1,
+      isTemplate: true,
+      status: "DRAFT",
+      title: quote.title,
+      introduction: quote.introduction,
+      scopeOfWork: quote.scopeOfWork,
+      exclusions: quote.exclusions,
+      termsAndConditions: quote.termsAndConditions,
+    },
+  });
+  await copySectionsAndLines(id, template.id);
+  await logAudit("Quote", template.id, "TEMPLATE_CREATED", `Template ${template.quoteNumber} saved from ${quote.quoteNumber}`);
+  revalidatePath("/quotes");
+  redirect(`/quotes/${template.id}`);
+}
+
+export async function createQuoteFromTemplate(templateId: number, formData: FormData) {
+  const template = await prisma.quote.findUnique({ where: { id: templateId } });
+  if (!template || !template.isTemplate) throw new Error("Template not found");
+  const customerId = num(formData, "customerId");
+  if (!customerId) throw new Error("Pick a customer for the new quote");
+  const siteIdRaw = str(formData, "siteId");
+
+  const quote = await prisma.quote.create({
+    data: {
+      quoteNumber: await nextQuoteNumber(),
+      version: 1,
+      status: "DRAFT",
+      customerId,
+      siteId: siteIdRaw ? Number(siteIdRaw) : null,
+      title: str(formData, "title") ?? template.title,
+      introduction: template.introduction,
+      scopeOfWork: template.scopeOfWork,
+      exclusions: template.exclusions,
+      termsAndConditions: template.termsAndConditions,
+    },
+  });
+  await copySectionsAndLines(templateId, quote.id);
+  await logAudit("Quote", quote.id, "QUOTE_CREATED", `${quote.quoteNumber} created from template ${template.quoteNumber}`);
+  revalidatePath("/quotes");
+  redirect(`/quotes/${quote.id}`);
+}
+
+export async function duplicateQuote(id: number) {
+  const quote = await prisma.quote.findUnique({ where: { id } });
+  if (!quote || quote.isTemplate) throw new Error("Quote not found");
+  const copy = await prisma.quote.create({
+    data: {
+      quoteNumber: await nextQuoteNumber(),
+      version: 1,
+      status: "DRAFT",
+      customerId: quote.customerId,
+      siteId: quote.siteId,
+      title: `${quote.title} (copy)`,
+      customerReference: quote.customerReference,
+      introduction: quote.introduction,
+      scopeOfWork: quote.scopeOfWork,
+      exclusions: quote.exclusions,
+      termsAndConditions: quote.termsAndConditions,
+    },
+  });
+  await copySectionsAndLines(id, copy.id);
+  await logAudit("Quote", copy.id, "QUOTE_CREATED", `${copy.quoteNumber} duplicated from ${quote.quoteNumber}`);
+  revalidatePath("/quotes");
+  redirect(`/quotes/${copy.id}`);
 }

@@ -9,9 +9,9 @@ import { QUOTE_STATUSES, QUOTE_STATUS_LABELS } from "@/lib/types";
 import { prisma } from "@/lib/db";
 import { AddSectionButton } from "../AddSectionButton";
 import { QuoteBuilder } from "../QuoteBuilder";
-import { addSection, acceptThisVersion, convertQuoteToJob, createNewVersion, deleteQuote, reorderSections, setQuoteStatus } from "../actions";
+import { addSection, acceptThisVersion, convertQuoteToJob, createNewVersion, createQuoteFromTemplate, deleteQuote, duplicateQuote, reorderSections, saveQuoteAsTemplate, setQuoteStatus } from "../actions";
 import { breakEvenHourlyRate, businessRunningCosts, labourStats } from "@/lib/calculations";
-import { getEmployees, getOverheads, getSettings } from "@/lib/queries";
+import { getCustomers, getEmployees, getOverheads, getSettings } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -38,7 +38,13 @@ export default async function QuoteDetailPage({ params }: { params: Promise<{ id
   });
   if (!quote) notFound();
 
-  const [employees, overheads, settings] = await Promise.all([getEmployees(true), getOverheads(true), getSettings()]);
+  const [employees, overheads, settings, customers, stockItems] = await Promise.all([
+    getEmployees(true),
+    getOverheads(true),
+    getSettings(),
+    quote.isTemplate ? getCustomers(true) : Promise.resolve([]),
+    prisma.stockItem.findMany({ where: { active: true }, select: { name: true, unit: true, unitCost: true }, orderBy: { name: "asc" } }),
+  ]);
   const runningCosts = businessRunningCosts(employees, overheads);
   const labour = labourStats(employees, overheads);
   const breakEvenRate = breakEvenHourlyRate(runningCosts.totalWeeklyCost, labour.totalBillableHours);
@@ -59,7 +65,7 @@ export default async function QuoteDetailPage({ params }: { params: Promise<{ id
     <div>
       <PageHeader
         title={`${quote.quoteNumber}${quote.version > 1 ? ` (v${quote.version})` : ""} — ${quote.title}`}
-        description={`${quote.customer.name}${quote.site ? ` · ${quote.site.name}` : ""}`}
+        description={quote.isTemplate ? "Reusable quote template — lines and terms here are copied onto every quote you start from it." : `${quote.customer?.name ?? "—"}${quote.site ? ` · ${quote.site.name}` : ""}`}
         actions={
           <div className="flex items-center gap-2">
             <TrafficBadge severity={STATUS_SEVERITY[quote.status] ?? "orange"} label={QUOTE_STATUS_LABELS[quote.status as keyof typeof QUOTE_STATUS_LABELS] ?? quote.status} />
@@ -73,7 +79,7 @@ export default async function QuoteDetailPage({ params }: { params: Promise<{ id
         }
       />
 
-      {siblingVersions.length > 1 && (
+      {!quote.isTemplate && siblingVersions.length > 1 && (
         <div className="mb-5 flex flex-wrap items-center gap-3 rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-sm text-indigo-800 dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:text-indigo-300">
           <span className="font-medium">
             {isSuperseded ? `This quote has been superseded (latest is v${latestVersion.version}).` : `This is the latest version (v${quote.version}).`}
@@ -133,6 +139,7 @@ export default async function QuoteDetailPage({ params }: { params: Promise<{ id
             }))}
             breakEvenLabourRate={breakEvenRate}
             targetMarginPercent={settings.targetMarginPercent}
+            priceList={stockItems}
             reorderAction={reorderSections.bind(null, quoteId)}
           />
           {quote.sections.length === 0 && (
@@ -154,6 +161,35 @@ export default async function QuoteDetailPage({ params }: { params: Promise<{ id
         </div>
 
         <div className="space-y-5">
+          {quote.isTemplate && (
+            <Card title="Use this template">
+              <form action={createQuoteFromTemplate.bind(null, quoteId)} className="space-y-3" id="use-template">
+                <FormField label="Quote title" name="title" defaultValue={quote.title} required />
+                <label className="block text-sm">
+                  <span className="font-medium text-slate-700 dark:text-slate-300">Customer</span>
+                  <select
+                    name="customerId"
+                    required
+                    className="mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800"
+                  >
+                    {customers.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {customers.length === 0 ? (
+                  <p className="text-xs text-slate-400">
+                    Add a customer first, then come back to start a quote from this template.
+                  </p>
+                ) : (
+                  <Button>Create quote from template</Button>
+                )}
+              </form>
+            </Card>
+          )}
+          {!quote.isTemplate && (
           <Card title="Status">
             <form action={boundSetStatus} className="space-y-3">
               <FormField key={quote.status} label="Status" name="status" defaultValue={quote.status} options={QUOTE_STATUSES.map((s) => ({ value: s, label: QUOTE_STATUS_LABELS[s] }))} />
@@ -166,21 +202,44 @@ export default async function QuoteDetailPage({ params }: { params: Promise<{ id
               </p>
             )}
           </Card>
+          )}
 
           <Card title="Actions">
             <div className="space-y-3">
+              {!quote.isTemplate && (
               <Link
                 href={`/quotes/${quoteId}/print`}
                 className="block w-full rounded-md border border-slate-300 px-4 py-2 text-center text-sm font-medium hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"
               >
                 Preview / print for customer
               </Link>
+              )}
+              {!quote.isTemplate && (
+              <form action={duplicateQuote.bind(null, quoteId)}>
+                <button type="submit" className="w-full rounded-md border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800">
+                  Duplicate quote
+                </button>
+              </form>
+              )}
+              {!quote.isTemplate && (
+              <form action={saveQuoteAsTemplate.bind(null, quoteId)}>
+                <button
+                  type="submit"
+                  title="Copy this quote's sections, lines and terms into a reusable template"
+                  className="w-full rounded-md border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"
+                >
+                  Save as template
+                </button>
+              </form>
+              )}
+              {!quote.isTemplate && (
               <form action={createNewVersion.bind(null, quoteId)}>
                 <button type="submit" className="w-full rounded-md border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800">
                   + New Version
                 </button>
               </form>
-              {quote.jobId ? (
+              )}
+              {quote.isTemplate ? null : quote.jobId ? (
                 <Link
                   href={`/jobs/${quote.jobId}`}
                   className="block w-full rounded-md bg-emerald-600 px-4 py-2 text-center text-sm font-medium text-white hover:bg-emerald-700"

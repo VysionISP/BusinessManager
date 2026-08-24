@@ -209,9 +209,9 @@ export async function getDashboardData(): Promise<DashboardData> {
     getAllJobFinancials(),
     getSettings(),
     prisma.enquiry.count({ where: { status: { notIn: ["CONVERTED", "LOST", "NO_RESPONSE"] } } }),
-    prisma.quote.count({ where: { status: { in: ["DRAFT", "SENT"] } } }),
+    prisma.quote.count({ where: { isTemplate: false, status: { in: ["DRAFT", "SENT"] } } }),
     prisma.enquiry.count({ where: { status: { notIn: ["CONVERTED", "LOST", "NO_RESPONSE"] }, followUpDate: { lte: now } } }),
-    prisma.quote.count({ where: { status: "DRAFT", createdAt: { lte: twoDaysAgo } } }),
+    prisma.quote.count({ where: { isTemplate: false, status: "DRAFT", createdAt: { lte: twoDaysAgo } } }),
     prisma.purchaseOrder.count({ where: { status: "APPROVAL_REQUIRED" } }),
     prisma.variation.count({ where: { status: "PENDING" } }),
     prisma.asset.count({ where: { nextServiceDate: { lte: now } } }),
@@ -525,7 +525,7 @@ export interface SalesAndPurchasingStats {
 export async function getSalesAndPurchasingStats(): Promise<SalesAndPurchasingStats> {
   const [enquiries, quotesWithLines, purchaseOrders, supplierInvoices] = await Promise.all([
     prisma.enquiry.findMany({ select: { status: true } }),
-    prisma.quote.findMany({ select: { status: true, lines: true } }),
+    prisma.quote.findMany({ where: { isTemplate: false }, select: { status: true, lines: true } }),
     prisma.purchaseOrder.findMany({ include: { lines: true } }),
     prisma.supplierInvoice.findMany({ include: { supplier: true } }),
   ]);

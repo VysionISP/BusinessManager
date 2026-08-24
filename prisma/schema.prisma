@@ -15,11 +15,14 @@ datasource db {
 
 // Singleton row holding business-wide settings used across calculations.
 model Settings {
-  id                       Int    @id @default(autoincrement())
-  businessName             String @default("Electrical Business Manager")
-  targetMarginPercent      Float  @default(20)
-  targetUtilisationPercent Float  @default(75)
-  openingBankBalance       Float  @default(0)
+  id                       Int     @id @default(autoincrement())
+  businessName             String  @default("Electrical Business Manager")
+  targetMarginPercent      Float   @default(20)
+  targetUtilisationPercent Float   @default(75)
+  openingBankBalance       Float   @default(0)
+  // Pre-filled onto every new quote; editable per quote afterwards.
+  defaultQuoteIntroduction String?
+  defaultQuoteTerms        String?
 }
 
 // ---------------------------------------------------------------------------
@@ -258,8 +261,12 @@ model Quote {
   id                 Int       @id @default(autoincrement())
   quoteNumber        String // shared across versions of the same quote
   version            Int       @default(1)
-  customerId         Int
-  customer           Customer  @relation(fields: [customerId], references: [id])
+  // A template is a reusable quote skeleton: no customer, never in the
+  // sales pipeline, edited with the same builder and copied into real
+  // quotes via "New quote from template".
+  isTemplate         Boolean   @default(false)
+  customerId         Int?
+  customer           Customer? @relation(fields: [customerId], references: [id])
   siteId             Int?
   site               Site?     @relation(fields: [siteId], references: [id], onDelete: SetNull)
   jobId              Int?
@@ -282,6 +289,7 @@ model Quote {
 
   @@index([quoteNumber])
   @@index([jobId])
+  @@index([isTemplate])
 }
 
 model QuoteSection {

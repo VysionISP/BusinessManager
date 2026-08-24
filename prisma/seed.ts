@@ -816,6 +816,30 @@ async function main() {
   });
   console.log("Timesheets seeded.");
 
+  // A starter quote template so the Templates panel isn't empty.
+  const tpl = await prisma.quote.create({
+    data: {
+      quoteNumber: "TPL-001",
+      version: 1,
+      isTemplate: true,
+      status: "DRAFT",
+      title: "Switchboard upgrade — standard",
+      scopeOfWork: "Replace existing switchboard with new board, safety switches and surge protection. Test and certify all circuits.",
+      exclusions: "Asbestos removal, consumer mains upgrades, and works required by defects found during installation.",
+      termsAndConditions: "Quote valid for 30 days. 50% deposit on acceptance, balance on completion. All work to AS/NZS 3000.",
+      sections: { create: [{ name: "Switchboard upgrade", displayMode: "ITEMIZED", sortOrder: 0 }] },
+    },
+    include: { sections: true },
+  });
+  await prisma.quoteLine.createMany({
+    data: [
+      { quoteId: tpl.id, sectionId: tpl.sections[0].id, lineType: "LABOUR", description: "Labour — upgrade & testing", quantity: 8, unit: "hr", unitCost: 95, unitPrice: 118.75, sortOrder: 0 },
+      { quoteId: tpl.id, sectionId: tpl.sections[0].id, lineType: "MATERIAL", description: "Switchboard, RCBOs & surge protection", quantity: 1, unit: "item", unitCost: 850, unitPrice: 1062.5, sortOrder: 1 },
+      { quoteId: tpl.id, sectionId: tpl.sections[0].id, lineType: "OTHER", description: "Certificate of electrical safety", quantity: 1, unit: "item", unitCost: 0, unitPrice: 60, sortOrder: 2 },
+    ],
+  });
+  console.log("Quote template seeded.");
+
   console.log("Cashflow adjustments seeded.");
   console.log(`Rossi (subcontractor) created with id ${rossi.id} — available for future job/labour allocation.`);
   console.log("Seed complete.");

@@ -52,9 +52,9 @@ export default async function QuotePrintPage({ params }: { params: Promise<{ id:
       <section className="mt-6 grid grid-cols-2 gap-8 text-sm">
         <div>
           <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">Prepared for</div>
-          <div className="mt-1 font-semibold">{quote.customer.name}</div>
-          {quote.customer.billingAddress && <div className="whitespace-pre-line text-slate-600">{quote.customer.billingAddress}</div>}
-          {quote.customer.mainContactName && <div className="text-slate-600">Attn: {quote.customer.mainContactName}</div>}
+          <div className="mt-1 font-semibold">{quote.customer?.name ?? "(template — no customer)"}</div>
+          {quote.customer?.billingAddress && <div className="whitespace-pre-line text-slate-600">{quote.customer.billingAddress}</div>}
+          {quote.customer?.mainContactName && <div className="text-slate-600">Attn: {quote.customer.mainContactName}</div>}
         </div>
         <div>
           {quote.site && (

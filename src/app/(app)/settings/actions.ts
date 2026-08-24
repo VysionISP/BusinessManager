@@ -13,6 +13,8 @@ export async function updateSettings(formData: FormData) {
       targetMarginPercent: Number(formData.get("targetMarginPercent") ?? settings.targetMarginPercent),
       targetUtilisationPercent: Number(formData.get("targetUtilisationPercent") ?? settings.targetUtilisationPercent),
       openingBankBalance: Number(formData.get("openingBankBalance") ?? settings.openingBankBalance),
+      defaultQuoteIntroduction: String(formData.get("defaultQuoteIntroduction") ?? "").trim() || null,
+      defaultQuoteTerms: String(formData.get("defaultQuoteTerms") ?? "").trim() || null,
     },
   });
   revalidatePath("/");
