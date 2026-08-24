@@ -30,8 +30,12 @@ export function Tr({ children, className = "" }: { children: React.ReactNode; cl
   );
 }
 
-export function Td({ children, className = "" }: { children?: React.ReactNode; className?: string }) {
-  return <td className={`whitespace-nowrap py-2.5 pr-4 ${className}`}>{children}</td>;
+export function Td({ children, className = "", colSpan }: { children?: React.ReactNode; className?: string; colSpan?: number }) {
+  return (
+    <td className={`whitespace-nowrap py-2.5 pr-4 ${className}`} colSpan={colSpan}>
+      {children}
+    </td>
+  );
 }
 
 export function EmptyRow({ colSpan, children }: { colSpan: number; children: React.ReactNode }) {

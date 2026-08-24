@@ -126,6 +126,14 @@ export const QUOTE_STATUS_LABELS: Record<QuoteStatus, string> = {
   EXPIRED: "Expired",
 };
 
+export const QUOTE_SECTION_DISPLAY_MODES = ["ITEMIZED", "FIXED"] as const;
+export type QuoteSectionDisplayMode = (typeof QUOTE_SECTION_DISPLAY_MODES)[number];
+
+export const QUOTE_SECTION_DISPLAY_MODE_LABELS: Record<QuoteSectionDisplayMode, string> = {
+  ITEMIZED: "Itemized",
+  FIXED: "Fixed price",
+};
+
 // ---------------------------------------------------------------------------
 // Jobs, phases & variations
 // ---------------------------------------------------------------------------

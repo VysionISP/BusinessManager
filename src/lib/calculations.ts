@@ -334,19 +334,34 @@ export interface QuoteLineLike {
   quantity: number;
   unitCost: number;
   unitPrice: number;
+  discountPercent?: number;
+  taxPercent?: number;
 }
 
 export function quoteLineCost(l: QuoteLineLike): number {
   return l.quantity * l.unitCost;
 }
 
+/** Line sell value after any line discount, excluding tax. */
 export function quoteLineSell(l: QuoteLineLike): number {
-  return l.quantity * l.unitPrice;
+  const gross = l.quantity * l.unitPrice;
+  return gross * (1 - (l.discountPercent ?? 0) / 100);
+}
+
+/** Line markup — (price − cost) / cost, as a percent. Purely a display value, never stored. */
+export function quoteLineMarkupPercent(l: QuoteLineLike): number {
+  return markupFromPrice(l.unitCost, l.unitPrice);
+}
+
+export function quoteLineTax(l: QuoteLineLike): number {
+  return quoteLineSell(l) * ((l.taxPercent ?? 0) / 100);
 }
 
 export interface QuoteTotals {
   totalCost: number;
   totalSell: number;
+  totalTax: number;
+  totalWithTax: number;
   profit: number;
   marginPercent: number;
 }
@@ -354,7 +369,15 @@ export interface QuoteTotals {
 export function quoteTotals(lines: QuoteLineLike[]): QuoteTotals {
   const totalCost = lines.reduce((sum, l) => sum + quoteLineCost(l), 0);
   const totalSell = lines.reduce((sum, l) => sum + quoteLineSell(l), 0);
-  return { totalCost, totalSell, profit: totalSell - totalCost, marginPercent: marginFromPrice(totalCost, totalSell) };
+  const totalTax = lines.reduce((sum, l) => sum + quoteLineTax(l), 0);
+  return {
+    totalCost,
+    totalSell,
+    totalTax,
+    totalWithTax: totalSell + totalTax,
+    profit: totalSell - totalCost,
+    marginPercent: marginFromPrice(totalCost, totalSell),
+  };
 }
 
 // ---------------------------------------------------------------------------

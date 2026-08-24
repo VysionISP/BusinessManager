@@ -4,13 +4,13 @@ import { Card } from "@/components/Card";
 import { PageHeader } from "@/components/PageHeader";
 import { Button, FormField } from "@/components/FormField";
 import { TrafficBadge } from "@/components/Badge";
-import { EmptyRow, Table, Td, Th, THead, Tr } from "@/components/Table";
 import { formatCurrency, formatDate, formatPercent } from "@/lib/format";
-import { quoteLineSell, quoteTotals } from "@/lib/calculations";
+import { quoteTotals, type QuoteLineLike } from "@/lib/calculations";
 import { QUOTE_STATUSES, QUOTE_STATUS_LABELS } from "@/lib/types";
 import { prisma } from "@/lib/db";
-import { QuoteLineForm } from "../QuoteLineForm";
-import { addQuoteLine, convertQuoteToJob, createNewVersion, deleteQuote, deleteQuoteLine, setQuoteStatus } from "../actions";
+import { SectionCard } from "../SectionCard";
+import { addSection, acceptThisVersion, convertQuoteToJob, createNewVersion, deleteQuote, setQuoteStatus } from "../actions";
+import { SectionForm } from "../SectionForm";
 
 export const dynamic = "force-dynamic";
 
@@ -27,13 +27,28 @@ export default async function QuoteDetailPage({ params }: { params: Promise<{ id
   const quoteId = Number(id);
   const quote = await prisma.quote.findUnique({
     where: { id: quoteId },
-    include: { customer: true, site: true, lines: { orderBy: { sortOrder: "asc" } }, job: true },
+    include: {
+      customer: true,
+      site: true,
+      job: true,
+      sections: { orderBy: { sortOrder: "asc" } },
+      lines: { orderBy: { sortOrder: "asc" } },
+    },
   });
   if (!quote) notFound();
 
-  const totals = quoteTotals(quote.lines);
-  const boundAddLine = addQuoteLine.bind(null, quoteId);
+  const siblingVersions = await prisma.quote.findMany({
+    where: { quoteNumber: quote.quoteNumber },
+    orderBy: { version: "desc" },
+    select: { id: true, version: true, status: true },
+  });
+  const latestVersion = siblingVersions[0];
+  const acceptedVersion = siblingVersions.find((v) => v.status === "ACCEPTED");
+  const isSuperseded = latestVersion.id !== quote.id;
+
+  const totals = quoteTotals(quote.lines as QuoteLineLike[]);
   const boundSetStatus = setQuoteStatus.bind(null, quoteId);
+  const boundAddSection = addSection.bind(null, quoteId);
 
   return (
     <div>
@@ -53,47 +68,71 @@ export default async function QuoteDetailPage({ params }: { params: Promise<{ id
         }
       />
 
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-        <div className="space-y-5 lg:col-span-2">
-          <Card title="Line items">
-            <div className="mb-4">
-              <QuoteLineForm action={boundAddLine} />
-            </div>
-            <Table>
-              <THead>
-                <Th>Section</Th>
-                <Th>Description</Th>
-                <Th>Qty</Th>
-                <Th>Unit price</Th>
-                <Th>Line total</Th>
-                <Th />
-              </THead>
-              <tbody>
-                {quote.lines.map((line) => (
-                  <Tr key={line.id}>
-                    <Td className="text-slate-500 dark:text-slate-400">{line.section ?? "—"}</Td>
-                    <Td>{line.description}</Td>
-                    <Td>
-                      {line.quantity} {line.unit}
-                    </Td>
-                    <Td>{formatCurrency(line.unitPrice, true)}</Td>
-                    <Td className="font-medium">{formatCurrency(quoteLineSell(line))}</Td>
-                    <Td className="text-right">
-                      <form action={deleteQuoteLine.bind(null, quoteId, line.id)}>
-                        <button type="submit" className="text-xs text-rose-600 hover:underline">
-                          Delete
-                        </button>
-                      </form>
-                    </Td>
-                  </Tr>
-                ))}
-                {quote.lines.length === 0 && <EmptyRow colSpan={6}>No line items yet.</EmptyRow>}
-              </tbody>
-            </Table>
+      {siblingVersions.length > 1 && (
+        <div className="mb-5 flex flex-wrap items-center gap-3 rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-sm text-indigo-800 dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:text-indigo-300">
+          <span className="font-medium">
+            {isSuperseded ? `This quote has been superseded (latest is v${latestVersion.version}).` : `This is the latest version (v${quote.version}).`}
+          </span>
+          <div className="ml-auto flex flex-wrap items-center gap-3">
+            {siblingVersions.map((v) => (
+              <Link
+                key={v.id}
+                href={`/quotes/${v.id}`}
+                className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                  v.id === quoteId ? "bg-indigo-600 text-white" : "bg-white text-indigo-700 hover:bg-indigo-100 dark:bg-slate-900 dark:text-indigo-300 dark:hover:bg-slate-800"
+                }`}
+              >
+                v{v.version}
+                {v.status === "ACCEPTED" ? " ✓" : ""}
+              </Link>
+            ))}
+            {acceptedVersion && acceptedVersion.id !== quoteId && (
+              <Link href={`/quotes/${acceptedVersion.id}`} className="text-xs font-semibold underline">
+                View accepted
+              </Link>
+            )}
+            {quote.status !== "ACCEPTED" && (
+              <form action={acceptThisVersion.bind(null, quoteId)}>
+                <button type="submit" className="rounded-full bg-emerald-600 px-3 py-1 text-xs font-semibold text-white hover:bg-emerald-700">
+                  Accept this version
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
 
-            <div className="mt-5 grid grid-cols-2 gap-4 border-t border-slate-100 pt-4 dark:border-slate-800 sm:grid-cols-4">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+        <div className="space-y-4 lg:col-span-2">
+          {quote.sections.map((section, i) => (
+            <SectionCard
+              key={section.id}
+              quoteId={quoteId}
+              section={section}
+              lines={quote.lines.filter((l) => l.sectionId === section.id)}
+              canMoveUp={i > 0}
+              canMoveDown={i < quote.sections.length - 1}
+            />
+          ))}
+          {quote.sections.length === 0 && (
+            <Card>
+              <p className="text-sm text-slate-400">No sections yet — add one to start building the quote.</p>
+            </Card>
+          )}
+
+          <details className="rounded-xl border border-dashed border-slate-300 px-4 py-3 dark:border-slate-700">
+            <summary className="cursor-pointer text-sm font-medium text-indigo-600">+ Add section</summary>
+            <div className="mt-3 max-w-md">
+              <SectionForm action={boundAddSection} submitLabel="Add section" />
+            </div>
+          </details>
+
+          <Card>
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
               <Stat label="Total cost" value={formatCurrency(totals.totalCost)} />
-              <Stat label="Total price" value={formatCurrency(totals.totalSell)} />
+              <Stat label="Subtotal" value={formatCurrency(totals.totalSell)} />
+              {totals.totalTax > 0 && <Stat label="Tax" value={formatCurrency(totals.totalTax)} />}
+              <Stat label={totals.totalTax > 0 ? "Total (incl. tax)" : "Total"} value={formatCurrency(totals.totalWithTax)} bold />
               <Stat label="Profit" value={formatCurrency(totals.profit)} />
               <Stat label="Margin" value={formatPercent(totals.marginPercent, 1)} />
             </div>
@@ -112,7 +151,7 @@ export default async function QuoteDetailPage({ params }: { params: Promise<{ id
         <div className="space-y-5">
           <Card title="Status">
             <form action={boundSetStatus} className="space-y-3">
-              <FormField label="Status" name="status" defaultValue={quote.status} options={QUOTE_STATUSES.map((s) => ({ value: s, label: QUOTE_STATUS_LABELS[s] }))} />
+              <FormField key={quote.status} label="Status" name="status" defaultValue={quote.status} options={QUOTE_STATUSES.map((s) => ({ value: s, label: QUOTE_STATUS_LABELS[s] }))} />
               <FormField label="Accepted by (name)" name="acceptedByName" defaultValue={quote.acceptedByName ?? undefined} hint="Only needed when marking Accepted" />
               <Button>Update status</Button>
             </form>
@@ -127,7 +166,7 @@ export default async function QuoteDetailPage({ params }: { params: Promise<{ id
             <div className="space-y-3">
               <form action={createNewVersion.bind(null, quoteId)}>
                 <button type="submit" className="w-full rounded-md border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800">
-                  Create new version
+                  + New Version
                 </button>
               </form>
               {quote.jobId ? (
@@ -155,7 +194,7 @@ export default async function QuoteDetailPage({ params }: { params: Promise<{ id
             <div className="space-y-2 text-sm">
               <Row label="Customer reference" value={quote.customerReference ?? "—"} />
               <Row label="Issue date" value={formatDate(quote.issueDate)} />
-              <Row label="Expiry date" value={formatDate(quote.expiryDate)} />
+              <Row label="Validity / expiry" value={formatDate(quote.expiryDate)} />
             </div>
           </Card>
         </div>
@@ -164,11 +203,11 @@ export default async function QuoteDetailPage({ params }: { params: Promise<{ id
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
   return (
     <div>
       <div className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">{label}</div>
-      <div className="font-semibold">{value}</div>
+      <div className={bold ? "text-lg font-bold text-slate-900 dark:text-slate-50" : "font-semibold"}>{value}</div>
     </div>
   );
 }
