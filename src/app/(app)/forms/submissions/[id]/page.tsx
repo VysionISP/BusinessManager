@@ -42,7 +42,7 @@ export default async function SubmissionViewPage({ params }: { params: Promise<{
           ))}
         </dl>
         {submission.job && (
-          <Link href={`/jobs/${submission.job.id}`} className="mt-6 inline-block text-sm font-medium text-blue-600 hover:underline">
+          <Link href={`/jobs/${submission.job.id}`} className="mt-6 inline-block text-sm font-medium text-indigo-600 hover:underline">
             ← Back to {submission.job.jobNumber}
           </Link>
         )}

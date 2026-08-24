@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/FormField";
 import { TrafficBadge } from "@/components/Badge";
 import { EmptyRow, Table, Td, Th, THead, Tr } from "@/components/Table";
+import { MetricBox } from "@/components/StatTile";
 import { BarcodeScanButton } from "@/components/BarcodeScan";
 import { formatCurrency } from "@/lib/format";
 import { prisma } from "@/lib/db";
@@ -50,14 +51,8 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
       )}
 
       <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="rounded-lg border border-slate-200 bg-white px-5 py-4 dark:border-slate-800 dark:bg-slate-900">
-          <span className="text-sm text-slate-500 dark:text-slate-400">Total stock value</span>
-          <div className="text-2xl font-semibold text-blue-600">{formatCurrency(totalValue)}</div>
-        </div>
-        <div className="rounded-lg border border-slate-200 bg-white px-5 py-4 dark:border-slate-800 dark:bg-slate-900">
-          <span className="text-sm text-slate-500 dark:text-slate-400">Items at or below reorder level</span>
-          <div className={`text-2xl font-semibold ${lowStockCount > 0 ? "text-rose-600" : "text-emerald-600"}`}>{lowStockCount}</div>
-        </div>
+        <MetricBox label="Total stock value" value={formatCurrency(totalValue)} />
+        <MetricBox label="Items at or below reorder level" value={String(lowStockCount)} tone={lowStockCount > 0 ? "rose" : "emerald"} />
       </div>
 
       <Card title="Stock items" icon={Boxes}>
@@ -76,7 +71,7 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
               return (
                 <Tr key={item.id}>
                   <Td className="font-medium">
-                    <Link href={`/stock/${item.id}`} className="text-blue-600 hover:underline">
+                    <Link href={`/stock/${item.id}`} className="text-indigo-600 hover:underline">
                       {item.name}
                     </Link>
                     {item.sku && <span className="block text-xs text-slate-400">{item.sku}</span>}

@@ -39,7 +39,7 @@ export default async function CustomersPage() {
                 <Td className="font-medium">
                   <div className="flex items-center gap-2.5">
                     <Avatar name={c.name} />
-                    <Link href={`/customers/${c.id}`} className="text-blue-600 hover:underline">
+                    <Link href={`/customers/${c.id}`} className="text-indigo-600 hover:underline">
                       {c.name}
                     </Link>
                   </div>

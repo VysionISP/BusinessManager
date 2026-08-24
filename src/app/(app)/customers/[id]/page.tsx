@@ -60,7 +60,7 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
                     </form>
                   </div>
                   <details className="mt-3">
-                    <summary className="cursor-pointer text-xs font-medium text-blue-600">Edit site</summary>
+                    <summary className="cursor-pointer text-xs font-medium text-indigo-600">Edit site</summary>
                     <div className="mt-3">
                       <SiteForm site={site} action={updateSite.bind(null, customerId, site.id)} submitLabel="Save site" />
                     </div>
@@ -71,7 +71,7 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
             </div>
 
             <details className="mt-4">
-              <summary className="cursor-pointer text-sm font-medium text-blue-600">+ Add a site</summary>
+              <summary className="cursor-pointer text-sm font-medium text-indigo-600">+ Add a site</summary>
               <div className="mt-3">
                 <SiteForm action={boundCreateSite} />
               </div>
@@ -90,7 +90,7 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
                 {customer.jobs.map((job) => (
                   <Tr key={job.id}>
                     <Td className="font-medium">
-                      <Link href={`/jobs/${job.id}`} className="text-blue-600 hover:underline">
+                      <Link href={`/jobs/${job.id}`} className="text-indigo-600 hover:underline">
                         {job.jobNumber}
                       </Link>
                     </Td>
@@ -104,7 +104,7 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
                 {customer.jobs.length === 0 && <EmptyRow colSpan={4}>No jobs yet.</EmptyRow>}
               </tbody>
             </Table>
-            <Link href={`/jobs/new?customerId=${customerId}`} className="mt-4 inline-block text-sm font-medium text-blue-600 hover:underline">
+            <Link href={`/jobs/new?customerId=${customerId}`} className="mt-4 inline-block text-sm font-medium text-indigo-600 hover:underline">
               + New job for this customer
             </Link>
           </Card>
@@ -122,7 +122,7 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
                     <Tr key={e.id}>
                       <Td>{formatDate(e.createdAt)}</Td>
                       <Td>
-                        <Link href={`/enquiries/${e.id}`} className="text-blue-600 hover:underline">
+                        <Link href={`/enquiries/${e.id}`} className="text-indigo-600 hover:underline">
                           {e.workRequested}
                         </Link>
                       </Td>
@@ -170,7 +170,7 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
                     {a.nextServiceDate && ` · Next service ${formatDate(a.nextServiceDate)}`}
                   </div>
                   <details className="mt-2">
-                    <summary className="cursor-pointer text-xs font-medium text-blue-600">Edit asset</summary>
+                    <summary className="cursor-pointer text-xs font-medium text-indigo-600">Edit asset</summary>
                     <div className="mt-2">
                       <AssetForm asset={a} sites={customer.sites} action={updateAsset.bind(null, customerId, a.id)} submitLabel="Save asset" />
                     </div>
@@ -180,7 +180,7 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
               {customer.assets.length === 0 && <p className="text-sm text-slate-400">No assets recorded yet.</p>}
             </div>
             <details className="mt-4">
-              <summary className="cursor-pointer text-sm font-medium text-blue-600">+ Add an asset</summary>
+              <summary className="cursor-pointer text-sm font-medium text-indigo-600">+ Add an asset</summary>
               <div className="mt-3">
                 <AssetForm sites={customer.sites} action={createAsset.bind(null, customerId)} />
               </div>

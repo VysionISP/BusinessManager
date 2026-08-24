@@ -59,7 +59,7 @@ export default async function FormsPage() {
                 <Tr key={s.id}>
                   <Td>{formatDate(s.submittedAt)}</Td>
                   <Td>
-                    <Link href={`/forms/submissions/${s.id}`} className="text-blue-600 hover:underline">
+                    <Link href={`/forms/submissions/${s.id}`} className="text-indigo-600 hover:underline">
                       {s.formTemplate.name}
                     </Link>
                   </Td>
@@ -87,7 +87,7 @@ function TemplateTable({ templates }: { templates: { id: number; name: string; d
           </div>
           <div className="flex items-center gap-3 text-xs">
             <span className="text-slate-400">{t._count.submissions} submitted</span>
-            <Link href={`/forms/templates/${t.id}/edit`} className="text-blue-600 hover:underline">
+            <Link href={`/forms/templates/${t.id}/edit`} className="text-indigo-600 hover:underline">
               Edit
             </Link>
             <form action={deleteFormTemplate.bind(null, t.id)}>

@@ -115,7 +115,7 @@ export default async function SchedulingPage({ searchParams }: { searchParams: P
                               </div>
                               <div className="text-slate-600 dark:text-slate-300">{e.title}</div>
                               {e.job && (
-                                <Link href={`/jobs/${e.job.id}`} className="text-blue-600 hover:underline">
+                                <Link href={`/jobs/${e.job.id}`} className="text-indigo-600 hover:underline">
                                   {e.job.jobNumber}
                                 </Link>
                               )}

@@ -34,3 +34,7 @@ summary::-webkit-details-marker {
 summary {
   list-style: none;
 }
+
+::selection {
+  background-color: rgb(99 102 241 / 0.25);
+}

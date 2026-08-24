@@ -56,10 +56,10 @@ export function Tabs({ tabs, children, defaultTab }: { tabs: TabDef[]; children:
               key={tab.id}
               type="button"
               onClick={() => setActive(tab.id)}
-              className={`flex shrink-0 items-center gap-1.5 border-b-2 px-3 py-2.5 text-sm font-medium transition-colors ${
+              className={`relative flex shrink-0 items-center gap-1.5 px-3 py-2.5 text-sm font-medium transition-colors ${
                 isActive
-                  ? "border-blue-600 text-blue-600 dark:border-blue-500 dark:text-blue-400"
-                  : "border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-800 dark:text-slate-400 dark:hover:border-slate-700 dark:hover:text-slate-200"
+                  ? "text-indigo-600 dark:text-indigo-400"
+                  : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
               }`}
             >
               {Icon && <Icon className="h-4 w-4" strokeWidth={2.25} />}
@@ -67,12 +67,13 @@ export function Tabs({ tabs, children, defaultTab }: { tabs: TabDef[]; children:
               {typeof tab.badge === "number" && tab.badge > 0 && (
                 <span
                   className={`ml-0.5 rounded-full px-1.5 py-0.5 text-[11px] font-semibold leading-none ${
-                    isActive ? "bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300" : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
+                    isActive ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-400" : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
                   }`}
                 >
                   {tab.badge}
                 </span>
               )}
+              {isActive && <span className="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-gradient-to-r from-indigo-600 to-violet-600" />}
             </button>
           );
         })}

@@ -142,7 +142,7 @@ export default async function QuoteDetailPage({ params }: { params: Promise<{ id
                   <button
                     type="submit"
                     disabled={quote.lines.length === 0}
-                    className="w-full rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                    className="w-full rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
                   >
                     Convert to job
                   </button>

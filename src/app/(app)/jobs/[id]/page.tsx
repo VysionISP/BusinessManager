@@ -337,7 +337,7 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
               <Card
                 title="Purchase orders"
                 action={
-                  <Link href={`/purchase-orders/new?jobId=${jobId}`} className="text-xs font-medium text-blue-600 hover:underline">
+                  <Link href={`/purchase-orders/new?jobId=${jobId}`} className="text-xs font-medium text-indigo-600 hover:underline">
                     + New PO
                   </Link>
                 }
@@ -357,7 +357,7 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
                         {job.purchaseOrders.map((po) => (
                           <tr key={po.id} className="border-b border-slate-50 last:border-0 dark:border-slate-800/60">
                             <td className="py-2 pr-4 font-medium">
-                              <Link href={`/purchase-orders/${po.id}`} className="text-blue-600 hover:underline">
+                              <Link href={`/purchase-orders/${po.id}`} className="text-indigo-600 hover:underline">
                                 {po.poNumber}
                               </Link>
                             </td>
@@ -421,7 +421,7 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
                   <ul className="mb-4 space-y-1 text-sm">
                     {job.formSubmissions.map((s) => (
                       <li key={s.id} className="flex items-center justify-between">
-                        <Link href={`/forms/submissions/${s.id}`} className="text-blue-600 hover:underline">
+                        <Link href={`/forms/submissions/${s.id}`} className="text-indigo-600 hover:underline">
                           {s.formTemplate.name}
                         </Link>
                         <span className="text-xs text-slate-400">{formatDate(s.submittedAt)}</span>
@@ -444,7 +444,7 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
                 ) : (
                   <p className="text-sm text-slate-400">
                     No form templates yet —{" "}
-                    <Link href="/forms/templates/new" className="text-blue-600 hover:underline">
+                    <Link href="/forms/templates/new" className="text-indigo-600 hover:underline">
                       create one
                     </Link>
                     .
@@ -492,7 +492,7 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
                 ) : (
                   <p className="text-sm text-slate-400">
                     No visits scheduled for this job yet —{" "}
-                    <Link href={`/scheduling?jobId=${jobId}`} className="text-blue-600 hover:underline">
+                    <Link href={`/scheduling?jobId=${jobId}`} className="text-indigo-600 hover:underline">
                       open scheduling
                     </Link>
                     .

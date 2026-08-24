@@ -134,7 +134,7 @@ function ScheduleList({ events }: { events: Awaited<ReturnType<typeof getTodaysS
               {e.job && (
                 <>
                   {" · "}
-                  <Link href={`/jobs/${e.job.id}`} className="text-blue-600 hover:underline">
+                  <Link href={`/jobs/${e.job.id}`} className="text-indigo-600 hover:underline">
                     {e.job.jobNumber}
                   </Link>
                 </>
@@ -157,13 +157,13 @@ function FieldDashboard({ todaysSchedule }: { todaysSchedule: Awaited<ReturnType
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <Card title="Today's schedule" icon={CalendarDays}>
           <ScheduleList events={todaysSchedule} />
-          <Link href="/scheduling" className="mt-3 inline-block text-sm font-medium text-blue-600 hover:underline">
+          <Link href="/scheduling" className="mt-3 inline-block text-sm font-medium text-indigo-600 hover:underline">
             Open scheduling →
           </Link>
         </Card>
         <Card title="Jobs" icon={Briefcase}>
           <p className="text-sm text-slate-500 dark:text-slate-400">View job details, log hours and materials, and fill out forms from the job page.</p>
-          <Link href="/jobs" className="mt-3 inline-block text-sm font-medium text-blue-600 hover:underline">
+          <Link href="/jobs" className="mt-3 inline-block text-sm font-medium text-indigo-600 hover:underline">
             All jobs →
           </Link>
         </Card>
@@ -256,7 +256,7 @@ export default async function DashboardPage() {
         <div className="lg:col-span-2">
           <Card title="Today's schedule" icon={CalendarDays}>
             <ScheduleList events={todaysSchedule} />
-            <Link href="/scheduling" className="mt-3 inline-block text-sm font-medium text-blue-600 hover:underline">
+            <Link href="/scheduling" className="mt-3 inline-block text-sm font-medium text-indigo-600 hover:underline">
               Open scheduling →
             </Link>
           </Card>
@@ -299,7 +299,7 @@ export default async function DashboardPage() {
                 {[...new Map([...data.jobsBelowMargin, ...data.jobsOverBudget].map((jf) => [jf.job.id, jf])).values()].map((jf) => (
                   <Tr key={jf.job.id}>
                     <Td className="font-medium">
-                      <Link href={`/jobs/${jf.job.id}`} className="text-blue-600 hover:underline">
+                      <Link href={`/jobs/${jf.job.id}`} className="text-indigo-600 hover:underline">
                         {jf.job.jobNumber}
                       </Link>
                     </Td>

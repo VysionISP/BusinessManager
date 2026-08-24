@@ -134,7 +134,7 @@ export default async function PurchaseOrderDetailPage({ params }: { params: Prom
 
           <Card title="Details">
             <div className="space-y-2 text-sm">
-              <Row label="Job" value={<Link href={`/jobs/${po.jobId}`} className="text-blue-600 hover:underline">{po.job.jobNumber}</Link>} />
+              <Row label="Job" value={<Link href={`/jobs/${po.jobId}`} className="text-indigo-600 hover:underline">{po.job.jobNumber}</Link>} />
               <Row label="Requested by" value={po.requestedBy ?? "—"} />
               <Row label="Required date" value={formatDate(po.requiredDate)} />
               <Row label="Delivery address" value={po.deliveryAddress ?? "—"} />

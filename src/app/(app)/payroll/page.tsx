@@ -149,7 +149,7 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
             </div>
             <div>
               <div className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Total payroll cost</div>
-              <div className="text-lg font-semibold text-blue-600">{formatCurrency(summary.totalPayrollCost)}</div>
+              <div className="text-lg font-semibold text-indigo-600">{formatCurrency(summary.totalPayrollCost)}</div>
             </div>
           </div>
         </Card>

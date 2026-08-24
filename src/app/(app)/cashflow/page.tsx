@@ -30,10 +30,10 @@ export default async function CashflowPage({ searchParams }: { searchParams: Pro
         description="Opening balance + cash received − cash paid = closing balance. Recurring payroll, super and overheads roll forward automatically; add one-off items below."
         actions={
           <div className="flex gap-2 text-sm">
-            <Link href="/cashflow?weeks=13" className={`rounded-md px-3 py-1.5 ${horizon === 13 ? "bg-blue-600 text-white" : "border border-slate-300 dark:border-slate-700"}`}>
+            <Link href="/cashflow?weeks=13" className={`rounded-md px-3 py-1.5 ${horizon === 13 ? "bg-indigo-600 text-white" : "border border-slate-300 dark:border-slate-700"}`}>
               13 weeks
             </Link>
-            <Link href="/cashflow?weeks=52" className={`rounded-md px-3 py-1.5 ${horizon === 52 ? "bg-blue-600 text-white" : "border border-slate-300 dark:border-slate-700"}`}>
+            <Link href="/cashflow?weeks=52" className={`rounded-md px-3 py-1.5 ${horizon === 52 ? "bg-indigo-600 text-white" : "border border-slate-300 dark:border-slate-700"}`}>
               52 weeks
             </Link>
           </div>

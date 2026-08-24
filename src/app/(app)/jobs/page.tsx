@@ -66,7 +66,7 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
             {sorted.map((jf) => (
               <Tr key={jf.job.id}>
                 <Td className="font-medium">
-                  <Link href={`/jobs/${jf.job.id}`} className="text-blue-600 hover:underline">
+                  <Link href={`/jobs/${jf.job.id}`} className="text-indigo-600 hover:underline">
                     {jf.job.jobNumber}
                   </Link>
                 </Td>

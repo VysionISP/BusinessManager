@@ -61,7 +61,7 @@ export default async function QuotesPage() {
               return (
                 <Tr key={q.id}>
                   <Td className="font-medium">
-                    <Link href={`/quotes/${q.id}`} className="text-blue-600 hover:underline">
+                    <Link href={`/quotes/${q.id}`} className="text-indigo-600 hover:underline">
                       {q.quoteNumber}
                       {q.version > 1 && <span className="text-slate-400"> v{q.version}</span>}
                     </Link>

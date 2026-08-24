@@ -36,7 +36,7 @@ export default async function AssetsPage() {
               return (
                 <div key={a.id} className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2 text-sm dark:border-slate-800">
                   <div>
-                    <Link href={`/customers/${a.customerId}`} className="font-medium text-blue-600 hover:underline">
+                    <Link href={`/customers/${a.customerId}`} className="font-medium text-indigo-600 hover:underline">
                       {a.customer.name}
                     </Link>
                     <div className="text-xs text-slate-500 dark:text-slate-400">
@@ -76,7 +76,7 @@ export default async function AssetsPage() {
                   </div>
                   <div className="mt-2 flex items-center gap-3">
                     <form action={generateJobFromTemplate.bind(null, t.id)}>
-                      <button type="submit" className="rounded-md bg-blue-600 px-3 py-1 text-xs font-medium text-white hover:bg-blue-700">
+                      <button type="submit" className="rounded-md bg-indigo-600 px-3 py-1 text-xs font-medium text-white hover:bg-indigo-700">
                         Generate job now
                       </button>
                     </form>

@@ -58,7 +58,7 @@ export default async function SettingsPage() {
           title="Users"
           icon={UserPlus}
           action={
-            <Link href="/settings/users/new" className="text-xs font-medium text-blue-600 hover:underline">
+            <Link href="/settings/users/new" className="text-xs font-medium text-indigo-600 hover:underline">
               + Add user
             </Link>
           }
@@ -85,7 +85,7 @@ export default async function SettingsPage() {
                   <Td>{USER_ROLE_LABELS[u.role as keyof typeof USER_ROLE_LABELS] ?? u.role}</Td>
                   <Td>{u.active ? <span className="text-emerald-600">Active</span> : <span className="text-slate-400">Inactive</span>}</Td>
                   <Td className="text-right">
-                    <Link href={`/settings/users/${u.id}/edit`} className="text-blue-600 hover:underline">
+                    <Link href={`/settings/users/${u.id}/edit`} className="text-indigo-600 hover:underline">
                       Edit
                     </Link>
                   </Td>

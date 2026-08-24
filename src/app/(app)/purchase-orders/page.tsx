@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/FormField";
 import { TrafficBadge } from "@/components/Badge";
 import { EmptyRow, Table, Td, Th, THead, Tr } from "@/components/Table";
+import { MetricBox } from "@/components/StatTile";
 import { formatCurrency } from "@/lib/format";
 import { purchaseOrderTotal } from "@/lib/calculations";
 import { OPEN_PO_STATUSES, PO_STATUS_LABELS } from "@/lib/types";
@@ -31,9 +32,8 @@ export default async function PurchaseOrdersPage() {
         }
       />
 
-      <div className="mb-5 rounded-lg border border-slate-200 bg-white px-5 py-4 dark:border-slate-800 dark:bg-slate-900">
-        <span className="text-sm text-slate-500 dark:text-slate-400">Total committed (open POs)</span>
-        <div className="text-2xl font-semibold text-blue-600">{formatCurrency(totalCommitted)}</div>
+      <div className="mb-5">
+        <MetricBox label="Total committed (open POs)" value={formatCurrency(totalCommitted)} />
       </div>
 
       <Card>
@@ -49,7 +49,7 @@ export default async function PurchaseOrdersPage() {
             {pos.map((po) => (
               <Tr key={po.id}>
                 <Td className="font-medium">
-                  <Link href={`/purchase-orders/${po.id}`} className="text-blue-600 hover:underline">
+                  <Link href={`/purchase-orders/${po.id}`} className="text-indigo-600 hover:underline">
                     {po.poNumber}
                   </Link>
                 </Td>

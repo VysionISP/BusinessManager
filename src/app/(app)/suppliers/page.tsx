@@ -52,7 +52,7 @@ export default async function SuppliersPage() {
                 <Td>{s.active ? <span className="text-emerald-600">Active</span> : <span className="text-slate-400">Inactive</span>}</Td>
                 <Td className="text-right">
                   <div className="flex justify-end gap-3">
-                    <Link href={`/suppliers/${s.id}/edit`} className="text-blue-600 hover:underline">
+                    <Link href={`/suppliers/${s.id}/edit`} className="text-indigo-600 hover:underline">
                       Edit
                     </Link>
                     <form action={deleteSupplier.bind(null, s.id)}>

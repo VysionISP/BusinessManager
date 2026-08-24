@@ -58,7 +58,7 @@ export function ChargeUpInvoiceForm({ unbilledEntries, action }: { unbilledEntri
         <FormField label="Issue date" name="issueDate" type="date" defaultValue={new Date().toISOString().slice(0, 10)} />
         <FormField label="Due date" name="dueDate" type="date" />
       </div>
-      <button type="submit" className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
+      <button type="submit" className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">
         Create charge-up invoice from selected costs
       </button>
     </form>

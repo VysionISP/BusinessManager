@@ -67,7 +67,7 @@ export default async function EmployeesPage() {
                   <Td>{e.active ? <span className="text-emerald-600">Active</span> : <span className="text-slate-400">Inactive</span>}</Td>
                   <Td className="text-right">
                     <div className="flex justify-end gap-3">
-                      <Link href={`/employees/${e.id}/edit`} className="text-blue-600 hover:underline">
+                      <Link href={`/employees/${e.id}/edit`} className="text-indigo-600 hover:underline">
                         Edit
                       </Link>
                       <form

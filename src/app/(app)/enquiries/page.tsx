@@ -50,7 +50,7 @@ export default async function EnquiriesPage() {
                   <Link
                     key={e.id}
                     href={`/enquiries/${e.id}`}
-                    className="block rounded-lg border border-slate-100 p-2.5 text-sm hover:border-blue-300 hover:bg-blue-50/50 dark:border-slate-800 dark:hover:bg-slate-800/60"
+                    className="block rounded-lg border border-slate-100 p-2.5 text-sm hover:border-indigo-300 hover:bg-indigo-50/50 dark:border-slate-800 dark:hover:bg-slate-800/60"
                   >
                     <div className="font-medium text-slate-800 dark:text-slate-200">{e.customer?.name ?? e.contactName ?? "New enquiry"}</div>
                     <div className="mt-1 text-xs text-slate-500 dark:text-slate-400 line-clamp-2">{e.workRequested}</div>
@@ -83,7 +83,7 @@ export default async function EnquiriesPage() {
                   <Tr key={e.id}>
                     <Td>{formatDate(e.createdAt)}</Td>
                     <Td>
-                      <Link href={`/enquiries/${e.id}`} className="text-blue-600 hover:underline">
+                      <Link href={`/enquiries/${e.id}`} className="text-indigo-600 hover:underline">
                         {e.customer?.name ?? e.contactName ?? "—"}
                       </Link>
                     </Td>

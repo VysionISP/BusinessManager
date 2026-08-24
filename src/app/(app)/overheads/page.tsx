@@ -3,6 +3,7 @@ import { Card } from "@/components/Card";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/FormField";
 import { Table, Td, Th, THead, Tr } from "@/components/Table";
+import { MetricBox } from "@/components/StatTile";
 import { overheadAnnualEquivalent, overheadMonthlyEquivalent, overheadWeeklyEquivalent, totalWeeklyOverheads } from "@/lib/calculations";
 import { formatCurrency } from "@/lib/format";
 import { getOverheads } from "@/lib/queries";
@@ -63,7 +64,7 @@ export default async function OverheadsPage() {
                       <Td>{o.active ? <span className="text-emerald-600">Active</span> : <span className="text-slate-400">Inactive</span>}</Td>
                       <Td className="text-right">
                         <div className="flex justify-end gap-3">
-                          <Link href={`/overheads/${o.id}/edit`} className="text-blue-600 hover:underline">
+                          <Link href={`/overheads/${o.id}/edit`} className="text-indigo-600 hover:underline">
                             Edit
                           </Link>
                           <form
@@ -92,9 +93,8 @@ export default async function OverheadsPage() {
         )}
       </div>
 
-      <div className="mt-5 rounded-lg border border-slate-200 bg-white px-5 py-4 dark:border-slate-800 dark:bg-slate-900">
-        <span className="text-sm text-slate-500 dark:text-slate-400">Total weekly overheads (active only)</span>
-        <div className="text-2xl font-semibold text-blue-600">{formatCurrency(totalWeekly)}</div>
+      <div className="mt-5">
+        <MetricBox label="Total weekly overheads (active only)" value={formatCurrency(totalWeekly)} />
       </div>
     </div>
   );

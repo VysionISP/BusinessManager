@@ -8,7 +8,7 @@ import { QUOTE_MARGIN_PRESETS } from "@/lib/types";
 import { createJobFromQuote } from "./actions";
 
 const numberInput =
-  "mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-800";
+  "mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800";
 
 function Field({
   label,
@@ -139,7 +139,7 @@ export function QuoteCalculator({ breakEvenLabourRate }: { breakEvenLabourRate: 
                   <tr
                     key={m.marginPercent}
                     className={`cursor-pointer border-b border-slate-50 last:border-0 dark:border-slate-800/60 ${
-                      m.marginPercent === selectedMargin ? "bg-blue-50 dark:bg-blue-950/30" : ""
+                      m.marginPercent === selectedMargin ? "bg-indigo-50 dark:bg-indigo-950/30" : ""
                     }`}
                     onClick={() => setSelectedMargin(m.marginPercent)}
                   >
@@ -172,19 +172,19 @@ export function QuoteCalculator({ breakEvenLabourRate }: { breakEvenLabourRate: 
           </label>
         </div>
 
-        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-950/30">
+        <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-4 dark:border-indigo-900 dark:bg-indigo-950/30">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <div className="text-xs uppercase tracking-wide text-blue-600 dark:text-blue-400">
+              <div className="text-xs uppercase tracking-wide text-indigo-600 dark:text-indigo-400">
                 Selected quote — {formatPercent(selectedMargin)} margin
               </div>
-              <div className="text-2xl font-semibold text-blue-800 dark:text-blue-200">{formatCurrency(selectedQuote?.price ?? 0)}</div>
+              <div className="text-2xl font-semibold text-indigo-800 dark:text-indigo-200">{formatCurrency(selectedQuote?.price ?? 0)}</div>
             </div>
             <button
               type="button"
               disabled={isPending}
               onClick={handleCreateJob}
-              className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+              className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
             >
               {isPending ? "Creating…" : "Create job from this quote"}
             </button>

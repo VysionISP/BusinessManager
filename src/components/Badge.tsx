@@ -15,8 +15,8 @@ const TRAFFIC_DOT: Record<AlertSeverity, string> = {
 
 export function TrafficBadge({ severity, label }: { severity: AlertSeverity; label: string }) {
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${TRAFFIC_CLASSES[severity]}`}>
-      <span className={`h-1.5 w-1.5 rounded-full ${TRAFFIC_DOT[severity]}`} />
+    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${TRAFFIC_CLASSES[severity]}`}>
+      <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${TRAFFIC_DOT[severity]}`} />
       {label}
     </span>
   );
@@ -32,7 +32,7 @@ const JOB_STATUS_CLASSES: Record<JobStatus, string> = {
   APPROVED: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300",
   PENDING: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
   SCHEDULED: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/40 dark:text-cyan-300",
-  IN_PROGRESS: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
+  IN_PROGRESS: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300",
   BACK_COSTING: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
   COMPLETE: "bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300",
   INVOICED: "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300",

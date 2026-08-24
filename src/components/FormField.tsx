@@ -18,7 +18,7 @@ export function FormField({
   options?: { value: string; label: string }[];
 }) {
   const baseClasses =
-    "mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100";
+    "mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm transition-shadow focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100";
 
   return (
     <label className="block text-sm">
@@ -60,12 +60,14 @@ export function Button({
   type?: "submit" | "button";
 }) {
   const classes = {
-    primary: "bg-blue-600 text-white hover:bg-blue-700",
-    secondary: "border border-slate-300 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800",
-    danger: "bg-rose-600 text-white hover:bg-rose-700",
+    primary:
+      "bg-gradient-to-br from-indigo-600 to-violet-600 text-white shadow-sm shadow-indigo-600/20 hover:shadow-md hover:shadow-indigo-600/30 hover:from-indigo-500 hover:to-violet-500",
+    secondary:
+      "border border-slate-200 bg-white text-slate-700 shadow-sm hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-750",
+    danger: "bg-gradient-to-br from-rose-600 to-rose-500 text-white shadow-sm shadow-rose-600/20 hover:shadow-md hover:shadow-rose-600/30",
   }[variant];
   return (
-    <button type={type} className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${classes}`}>
+    <button type={type} className={`rounded-lg px-4 py-2 text-sm font-medium transition-all ${classes}`}>
       {children}
     </button>
   );

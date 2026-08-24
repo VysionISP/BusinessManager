@@ -126,8 +126,10 @@ function NavLinkItem({ link, pathname, onNavigate }: { link: NavLink; pathname: 
     <Link
       href={link.href}
       onClick={onNavigate}
-      className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-        active ? "bg-blue-600 text-white" : "text-slate-300 hover:bg-slate-800 hover:text-white"
+      className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${
+        active
+          ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-950/40"
+          : "text-slate-400 hover:bg-white/5 hover:text-white"
       }`}
     >
       <Icon className="h-4 w-4 shrink-0" strokeWidth={2} />
@@ -165,8 +167,10 @@ function SidebarContent({ pathname, role, onNavigate }: { pathname: string; role
 
 function Logo() {
   return (
-    <Link href="/" className="flex items-center gap-2.5 px-4 py-4">
-      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-sm font-bold text-white">V</span>
+    <Link href="/" className="relative flex items-center gap-2.5 px-4 py-4">
+      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 text-sm font-bold text-white shadow-lg shadow-indigo-950/50">
+        V
+      </span>
       <span className="text-base font-semibold tracking-tight text-white">Voltline</span>
     </Link>
   );
@@ -214,34 +218,41 @@ export function AppShell({
   return (
     <div className="flex h-dvh overflow-hidden bg-slate-50 dark:bg-slate-950">
       {/* Desktop sidebar */}
-      <aside className="hidden w-64 shrink-0 flex-col border-r border-slate-800 bg-slate-900 md:flex">
-        <Logo />
-        <SidebarContent pathname={pathname} role={user.role} />
+      <aside className="relative hidden w-64 shrink-0 flex-col overflow-hidden border-r border-slate-800/60 bg-slate-950 md:flex">
+        <div className="pointer-events-none absolute -left-20 -top-20 h-64 w-64 rounded-full bg-indigo-600/20 blur-3xl" />
+        <div className="pointer-events-none absolute bottom-0 right-0 h-48 w-48 rounded-full bg-violet-600/10 blur-3xl" />
+        <div className="relative z-10 flex flex-1 flex-col overflow-hidden">
+          <Logo />
+          <SidebarContent pathname={pathname} role={user.role} />
+        </div>
       </aside>
 
       {/* Mobile drawer */}
       {mobileOpen && (
         <div className="fixed inset-0 z-40 md:hidden">
           <div className="absolute inset-0 bg-black/50" onClick={() => setMobileOpen(false)} />
-          <aside className="absolute inset-y-0 left-0 flex w-64 flex-col border-r border-slate-800 bg-slate-900">
-            <div className="flex items-center justify-between px-2 py-2">
-              <Logo />
-              <button
-                type="button"
-                onClick={() => setMobileOpen(false)}
-                className="mr-2 rounded-md p-2 text-slate-400 hover:bg-slate-800 hover:text-white"
-                aria-label="Close menu"
-              >
-                <X className="h-5 w-5" />
-              </button>
+          <aside className="absolute inset-y-0 left-0 flex w-64 flex-col overflow-hidden border-r border-slate-800/60 bg-slate-950">
+            <div className="pointer-events-none absolute -left-20 -top-20 h-64 w-64 rounded-full bg-indigo-600/20 blur-3xl" />
+            <div className="relative z-10 flex flex-1 flex-col overflow-hidden">
+              <div className="flex items-center justify-between px-2 py-2">
+                <Logo />
+                <button
+                  type="button"
+                  onClick={() => setMobileOpen(false)}
+                  className="mr-2 rounded-md p-2 text-slate-400 hover:bg-white/5 hover:text-white"
+                  aria-label="Close menu"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <SidebarContent pathname={pathname} role={user.role} onNavigate={() => setMobileOpen(false)} />
             </div>
-            <SidebarContent pathname={pathname} role={user.role} onNavigate={() => setMobileOpen(false)} />
           </aside>
         </div>
       )}
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <header className="flex shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-900 print:hidden">
+        <header className="flex shrink-0 items-center gap-3 border-b border-slate-200/70 bg-white/90 px-4 py-3 shadow-sm shadow-slate-200/40 backdrop-blur-sm dark:border-slate-800 dark:bg-slate-900/90 print:hidden">
           <button
             type="button"
             onClick={() => setMobileOpen(true)}
@@ -254,7 +265,7 @@ export function AppShell({
           <div className="ml-auto flex items-center gap-3">
             <span className="hidden text-sm font-medium text-slate-500 dark:text-slate-400 sm:inline">{businessName}</span>
             <div className="hidden items-center gap-2 sm:flex">
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-xs font-semibold text-blue-700 dark:bg-blue-950/60 dark:text-blue-300">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 text-xs font-semibold text-white shadow-sm shadow-indigo-600/30">
                 {initials(user.name)}
               </span>
               <div className="leading-tight">

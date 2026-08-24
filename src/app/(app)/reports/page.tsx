@@ -38,7 +38,7 @@ export default async function ReportsPage() {
               {rankedJobs.map((jf) => (
                 <Tr key={jf.job.id}>
                   <Td className="font-medium">
-                    <Link href={`/jobs/${jf.job.id}`} className="text-blue-600 hover:underline">
+                    <Link href={`/jobs/${jf.job.id}`} className="text-indigo-600 hover:underline">
                       {jf.job.jobNumber}
                     </Link>
                   </Td>
@@ -77,7 +77,7 @@ export default async function ReportsPage() {
               <Row label="Operating profit" value={formatCurrency(pl.operatingProfit)} bold />
               <Row label="Net operating margin" value={formatPercent(pl.netOperatingMarginPercent, 1)} sub />
             </div>
-            <Link href="/expenses" className="mt-4 inline-block text-sm font-medium text-blue-600 hover:underline">
+            <Link href="/expenses" className="mt-4 inline-block text-sm font-medium text-indigo-600 hover:underline">
               Manage expenses →
             </Link>
           </Card>
@@ -127,10 +127,10 @@ export default async function ReportsPage() {
               <Row label="Average quote value" value={formatCurrency(salesPurchasing.quotes.avgValue)} sub />
             </div>
             <div className="mt-4 flex gap-4 text-sm font-medium">
-              <Link href="/enquiries" className="text-blue-600 hover:underline">
+              <Link href="/enquiries" className="text-indigo-600 hover:underline">
                 Enquiries →
               </Link>
-              <Link href="/quotes" className="text-blue-600 hover:underline">
+              <Link href="/quotes" className="text-indigo-600 hover:underline">
                 Quotes →
               </Link>
             </div>
@@ -151,7 +151,7 @@ export default async function ReportsPage() {
                 </div>
               </div>
             )}
-            <Link href="/purchase-orders" className="mt-4 inline-block text-sm font-medium text-blue-600 hover:underline">
+            <Link href="/purchase-orders" className="mt-4 inline-block text-sm font-medium text-indigo-600 hover:underline">
               Purchase orders →
             </Link>
           </Card>

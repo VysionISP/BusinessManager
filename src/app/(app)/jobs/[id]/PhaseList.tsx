@@ -53,7 +53,7 @@ export function PhaseList({
               <Stat label="Variance" value={formatCurrency(budget - actual.total)} warn={overBudget} />
             </div>
             <details className="mt-3">
-              <summary className="cursor-pointer text-xs font-medium text-blue-600">Edit phase</summary>
+              <summary className="cursor-pointer text-xs font-medium text-indigo-600">Edit phase</summary>
               <div className="mt-3">
                 <PhaseForm phase={phase} action={updatePhase.bind(null, jobId, phase.id)} submitLabel="Save phase" />
               </div>
@@ -64,7 +64,7 @@ export function PhaseList({
       {phases.length === 0 && <p className="text-sm text-slate-400">No phases yet — costs are tracked against the whole job.</p>}
 
       <details>
-        <summary className="cursor-pointer text-sm font-medium text-blue-600">+ Add a phase</summary>
+        <summary className="cursor-pointer text-sm font-medium text-indigo-600">+ Add a phase</summary>
         <div className="mt-3">
           <PhaseForm action={addPhase.bind(null, jobId)} />
         </div>

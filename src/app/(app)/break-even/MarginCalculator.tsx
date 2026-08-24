@@ -20,7 +20,7 @@ export function MarginCalculator({ breakEvenRate, defaultMargin }: { breakEvenRa
             onClick={() => setMargin(preset)}
             className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
               margin === preset
-                ? "bg-blue-600 text-white"
+                ? "bg-indigo-600 text-white"
                 : "border border-slate-300 text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
             }`}
           >
@@ -49,9 +49,9 @@ export function MarginCalculator({ breakEvenRate, defaultMargin }: { breakEvenRa
           <div className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Target margin</div>
           <div className="text-xl font-semibold">{formatPercent(margin)}</div>
         </div>
-        <div className="rounded-lg bg-blue-50 px-4 py-3 dark:bg-blue-950/40">
-          <div className="text-xs uppercase tracking-wide text-blue-600 dark:text-blue-400">Rate required</div>
-          <div className="text-xl font-semibold text-blue-700 dark:text-blue-300">{formatCurrency(rate, true)}/hr</div>
+        <div className="rounded-lg bg-indigo-50 px-4 py-3 dark:bg-indigo-950/40">
+          <div className="text-xs uppercase tracking-wide text-indigo-600 dark:text-indigo-400">Rate required</div>
+          <div className="text-xl font-semibold text-indigo-700 dark:text-indigo-300">{formatCurrency(rate, true)}/hr</div>
         </div>
       </div>
     </div>

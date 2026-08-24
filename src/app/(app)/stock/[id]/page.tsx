@@ -70,7 +70,7 @@ export default async function StockItemPage({ params }: { params: Promise<{ id: 
                     </Td>
                     <Td>
                       {m.job ? (
-                        <Link href={`/jobs/${m.job.id}`} className="text-blue-600 hover:underline">
+                        <Link href={`/jobs/${m.job.id}`} className="text-indigo-600 hover:underline">
                           {m.job.jobNumber}
                         </Link>
                       ) : (
