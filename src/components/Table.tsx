@@ -1,6 +1,6 @@
 export function Table({ children }: { children: React.ReactNode }) {
   return (
-    <div className="overflow-x-auto">
+    <div className="-mx-5 overflow-x-auto px-5 sm:mx-0 sm:px-0">
       <table className="w-full text-left text-sm">{children}</table>
     </div>
   );
@@ -17,7 +17,7 @@ export function THead({ children }: { children: React.ReactNode }) {
 }
 
 export function Th({ children, className = "" }: { children?: React.ReactNode; className?: string }) {
-  return <th className={`py-3 pr-4 font-semibold ${className}`}>{children}</th>;
+  return <th className={`whitespace-nowrap py-3 pr-4 font-semibold ${className}`}>{children}</th>;
 }
 
 export function Tr({ children, className = "" }: { children: React.ReactNode; className?: string }) {
@@ -31,7 +31,7 @@ export function Tr({ children, className = "" }: { children: React.ReactNode; cl
 }
 
 export function Td({ children, className = "" }: { children?: React.ReactNode; className?: string }) {
-  return <td className={`py-2.5 pr-4 ${className}`}>{children}</td>;
+  return <td className={`whitespace-nowrap py-2.5 pr-4 ${className}`}>{children}</td>;
 }
 
 export function EmptyRow({ colSpan, children }: { colSpan: number; children: React.ReactNode }) {
