@@ -209,6 +209,11 @@ export async function moveSection(quoteId: number, sectionId: number, direction:
   revalidatePath(`/quotes/${quoteId}`);
 }
 
+export async function reorderSections(quoteId: number, orderedIds: number[]) {
+  await prisma.$transaction(orderedIds.map((id, index) => prisma.quoteSection.update({ where: { id }, data: { sortOrder: index } })));
+  revalidatePath(`/quotes/${quoteId}`);
+}
+
 // ---------------------------------------------------------------------------
 // Lines
 // ---------------------------------------------------------------------------
