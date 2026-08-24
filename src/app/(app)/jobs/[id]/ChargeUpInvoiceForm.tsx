@@ -1,3 +1,5 @@
+"use client";
+
 import { FormField } from "@/components/FormField";
 import { formatCurrency, formatDate } from "@/lib/format";
 import type { JobCostEntry } from "@prisma/client";

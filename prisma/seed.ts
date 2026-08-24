@@ -316,13 +316,34 @@ async function main() {
     ],
   });
   const mbDeposit = await prisma.invoice.create({
-    data: { jobId: meadowbank.id, invoiceNumber: "INV-1041", type: "DEPOSIT", issueDate: daysAgo(68), dueDate: daysAgo(54), amount: 14400 },
+    data: {
+      jobId: meadowbank.id,
+      invoiceNumber: "INV-1041",
+      type: "DEPOSIT",
+      issueDate: daysAgo(68),
+      dueDate: daysAgo(54),
+      lines: { create: [{ description: "Invoice amount", quantity: 1, unit: "item", unitPrice: 14400, taxPercent: 0, sortOrder: 0 }] },
+    },
   });
   const mbProgress = await prisma.invoice.create({
-    data: { jobId: meadowbank.id, invoiceNumber: "INV-1052", type: "PROGRESS", issueDate: daysAgo(35), dueDate: daysAgo(21), amount: 19200 },
+    data: {
+      jobId: meadowbank.id,
+      invoiceNumber: "INV-1052",
+      type: "PROGRESS",
+      issueDate: daysAgo(35),
+      dueDate: daysAgo(21),
+      lines: { create: [{ description: "Invoice amount", quantity: 1, unit: "item", unitPrice: 19200, taxPercent: 0, sortOrder: 0 }] },
+    },
   });
   await prisma.invoice.create({
-    data: { jobId: meadowbank.id, invoiceNumber: "INV-1067", type: "FINAL", issueDate: daysAgo(18), dueDate: daysAgo(4), amount: 14400 },
+    data: {
+      jobId: meadowbank.id,
+      invoiceNumber: "INV-1067",
+      type: "FINAL",
+      issueDate: daysAgo(18),
+      dueDate: daysAgo(4),
+      lines: { create: [{ description: "Invoice amount", quantity: 1, unit: "item", unitPrice: 14400, taxPercent: 0, sortOrder: 0 }] },
+    },
   });
   await prisma.payment.create({ data: { invoiceId: mbDeposit.id, date: daysAgo(60), amount: 14400 } });
   await prisma.payment.create({ data: { invoiceId: mbProgress.id, date: daysAgo(15), amount: 19200 } });
@@ -357,7 +378,14 @@ async function main() {
     ],
   });
   const nguyenDeposit = await prisma.invoice.create({
-    data: { jobId: nguyen.id, invoiceNumber: "INV-1071", type: "DEPOSIT", issueDate: daysAgo(28), dueDate: daysAgo(14), amount: 5000 },
+    data: {
+      jobId: nguyen.id,
+      invoiceNumber: "INV-1071",
+      type: "DEPOSIT",
+      issueDate: daysAgo(28),
+      dueDate: daysAgo(14),
+      lines: { create: [{ description: "Invoice amount", quantity: 1, unit: "item", unitPrice: 5000, taxPercent: 0, sortOrder: 0 }] },
+    },
   });
   await prisma.payment.create({ data: { invoiceId: nguyenDeposit.id, date: daysAgo(20), amount: 5000 } });
   await prisma.variation.create({
@@ -459,10 +487,24 @@ async function main() {
     ],
   });
   const sunridgeDeposit = await prisma.invoice.create({
-    data: { jobId: sunridge.id, invoiceNumber: "INV-1080", type: "DEPOSIT", issueDate: daysAgo(52), dueDate: daysAgo(38), amount: 15000 },
+    data: {
+      jobId: sunridge.id,
+      invoiceNumber: "INV-1080",
+      type: "DEPOSIT",
+      issueDate: daysAgo(52),
+      dueDate: daysAgo(38),
+      lines: { create: [{ description: "Invoice amount", quantity: 1, unit: "item", unitPrice: 15000, taxPercent: 0, sortOrder: 0 }] },
+    },
   });
   const sunridgeProgress1 = await prisma.invoice.create({
-    data: { jobId: sunridge.id, invoiceNumber: "INV-1095", type: "PROGRESS", issueDate: daysAgo(25), dueDate: daysAgo(11), amount: 25000 },
+    data: {
+      jobId: sunridge.id,
+      invoiceNumber: "INV-1095",
+      type: "PROGRESS",
+      issueDate: daysAgo(25),
+      dueDate: daysAgo(11),
+      lines: { create: [{ description: "Invoice amount", quantity: 1, unit: "item", unitPrice: 25000, taxPercent: 0, sortOrder: 0 }] },
+    },
   });
   await prisma.payment.create({ data: { invoiceId: sunridgeDeposit.id, date: daysAgo(45), amount: 15000 } });
   await prisma.payment.create({ data: { invoiceId: sunridgeProgress1.id, date: daysAgo(20), amount: 15000 } });
@@ -495,7 +537,14 @@ async function main() {
     ],
   });
   const franklinFinal = await prisma.invoice.create({
-    data: { jobId: franklin.id, invoiceNumber: "INV-1030", type: "FINAL", issueDate: daysAgo(62), dueDate: daysAgo(48), amount: 15000 },
+    data: {
+      jobId: franklin.id,
+      invoiceNumber: "INV-1030",
+      type: "FINAL",
+      issueDate: daysAgo(62),
+      dueDate: daysAgo(48),
+      lines: { create: [{ description: "Invoice amount", quantity: 1, unit: "item", unitPrice: 15000, taxPercent: 0, sortOrder: 0 }] },
+    },
   });
   await prisma.payment.create({ data: { invoiceId: franklinFinal.id, date: daysAgo(50), amount: 15000 } });
 

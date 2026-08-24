@@ -8,6 +8,7 @@ import {
   committedCost,
   computeJobFinancials,
   employeeTrueCost,
+  invoiceLinesTotal,
   labourStats,
   overheadMonthlyEquivalent,
   payrollEntryCost,
@@ -15,6 +16,11 @@ import {
   quoteTotals,
   trafficLight,
 } from "./calculations";
+
+/** Attaches each invoice's derived `amount` (sum of its line items) so downstream financial calculations don't need to know about lines. */
+function withInvoiceAmounts<T extends { lines: { quantity: number; unitPrice: number; taxPercent: number }[] }>(invoices: T[]) {
+  return invoices.map((inv) => ({ ...inv, amount: invoiceLinesTotal(inv.lines) }));
+}
 import { addDays, mondayOfWeek } from "./dates";
 
 export async function getSettings() {
@@ -87,7 +93,7 @@ const jobFinancialsInclude = {
   site: true,
   phases: { orderBy: { sortOrder: "asc" as const } },
   costEntries: true,
-  invoices: { include: { payments: true } },
+  invoices: { include: { payments: true, lines: { orderBy: { sortOrder: "asc" as const } } } },
   variations: true,
   purchaseOrders: { include: { lines: true } },
 };
@@ -96,9 +102,11 @@ async function getAllJobFinancials(): Promise<JobFinancials<Awaited<ReturnType<t
   const [jobs, settings] = await Promise.all([fetchJobsForFinancials(), getSettings()]);
 
   return jobs.map((job) => {
-    const payments = job.invoices.flatMap((inv) => inv.payments.map((p) => ({ ...p, invoiceId: inv.id })));
+    const invoices = withInvoiceAmounts(job.invoices);
+    const augmentedJob = { ...job, invoices };
+    const payments = invoices.flatMap((inv) => inv.payments.map((p) => ({ ...p, invoiceId: inv.id })));
     const committed = committedCost(job.purchaseOrders, OPEN_PO_STATUSES);
-    return computeJobFinancials(job, job.costEntries, job.invoices, payments, job.variations, committed, settings.targetMarginPercent);
+    return computeJobFinancials(augmentedJob, job.costEntries, invoices, payments, job.variations, committed, settings.targetMarginPercent);
   });
 }
 
@@ -121,7 +129,10 @@ export async function getJobDetail(id: number) {
         enquiry: true,
         phases: { orderBy: { sortOrder: "asc" } },
         costEntries: { orderBy: { date: "desc" }, include: { phase: true } },
-        invoices: { include: { payments: { orderBy: { date: "desc" } } }, orderBy: { issueDate: "desc" } },
+        invoices: {
+          include: { payments: { orderBy: { date: "desc" } }, lines: { orderBy: { sortOrder: "asc" } } },
+          orderBy: { issueDate: "desc" },
+        },
         variations: { orderBy: { createdAt: "desc" } },
         purchaseOrders: { include: { lines: true, supplier: true }, orderBy: { createdAt: "desc" } },
         supplierInvoices: { include: { supplier: true }, orderBy: { date: "desc" } },
@@ -133,10 +144,12 @@ export async function getJobDetail(id: number) {
     getSettings(),
   ]);
   if (!job) return null;
-  const payments = job.invoices.flatMap((inv) => inv.payments.map((p) => ({ ...p, invoiceId: inv.id })));
+  const invoices = withInvoiceAmounts(job.invoices);
+  const augmentedJob = { ...job, invoices };
+  const payments = invoices.flatMap((inv) => inv.payments.map((p) => ({ ...p, invoiceId: inv.id })));
   const committed = committedCost(job.purchaseOrders, OPEN_PO_STATUSES);
-  const financials = computeJobFinancials(job, job.costEntries, job.invoices, payments, job.variations, committed, settings.targetMarginPercent);
-  return { job, financials };
+  const financials = computeJobFinancials(augmentedJob, job.costEntries, invoices, payments, job.variations, committed, settings.targetMarginPercent);
+  return { job: augmentedJob, financials };
 }
 
 export interface DashboardData {

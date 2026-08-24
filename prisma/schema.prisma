@@ -430,13 +430,27 @@ model Invoice {
   type          String   @default("PROGRESS") // DEPOSIT | PROGRESS | FINAL | VARIATION | RETENTION
   issueDate     DateTime
   dueDate       DateTime
-  amount        Float
   createdAt     DateTime @default(now())
 
+  lines       InvoiceLine[]
   payments    Payment[]
   costEntries JobCostEntry[]
 
   @@index([jobId])
+}
+
+model InvoiceLine {
+  id          Int     @id @default(autoincrement())
+  invoiceId   Int
+  invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  description String
+  quantity    Float   @default(1)
+  unit        String  @default("item")
+  unitPrice   Float   @default(0)
+  taxPercent  Float   @default(0)
+  sortOrder   Int     @default(0)
+
+  @@index([invoiceId])
 }
 
 model Payment {

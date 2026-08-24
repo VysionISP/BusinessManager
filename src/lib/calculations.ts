@@ -568,6 +568,23 @@ export function progressClaimSummary(revisedContractValue: number, totalInvoiced
 // Invoicing
 // ---------------------------------------------------------------------------
 
+export interface InvoiceLineLike {
+  quantity: number;
+  unitPrice: number;
+  taxPercent?: number;
+}
+
+/** A line's total, including its own tax — quantity × unit price, grossed up by tax%. */
+export function invoiceLineTotal(line: InvoiceLineLike): number {
+  const base = line.quantity * line.unitPrice;
+  return base * (1 + (line.taxPercent ?? 0) / 100);
+}
+
+/** An invoice's total amount, derived from its line items — the single source of truth for what an invoice is worth. */
+export function invoiceLinesTotal(lines: InvoiceLineLike[]): number {
+  return lines.reduce((sum, line) => sum + invoiceLineTotal(line), 0);
+}
+
 export interface InvoiceLike {
   amount: number;
   dueDate: Date | string;

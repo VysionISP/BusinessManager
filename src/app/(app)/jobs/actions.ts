@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { logAudit } from "@/lib/audit";
 import { formatCurrency } from "@/lib/format";
+import { invoiceLinesTotal } from "@/lib/calculations";
 
 function num(formData: FormData, key: string, fallback = 0): number {
   const raw = formData.get(key);
@@ -111,7 +112,12 @@ export async function deleteCostEntry(jobId: number, entryId: number) {
 
 export async function addInvoice(jobId: number, formData: FormData) {
   const invoiceNumber = str(formData, "invoiceNumber");
-  const amount = num(formData, "amount");
+  const description = str(formData, "description");
+  const quantity = num(formData, "quantity", 1);
+  const unit = str(formData, "unit") || "item";
+  const unitPrice = num(formData, "unitPrice");
+  const taxPercent = num(formData, "taxPercent");
+
   await prisma.invoice.create({
     data: {
       jobId,
@@ -119,10 +125,11 @@ export async function addInvoice(jobId: number, formData: FormData) {
       type: str(formData, "type") || "PROGRESS",
       issueDate: dateOrNull(formData, "issueDate") ?? new Date(),
       dueDate: dateOrNull(formData, "dueDate") ?? new Date(),
-      amount,
+      lines: description ? { create: [{ description, quantity, unit, unitPrice, taxPercent, sortOrder: 0 }] } : undefined,
     },
   });
-  await logAudit("Job", jobId, "INVOICE_CREATED", `Invoice ${invoiceNumber} raised for ${formatCurrency(amount)}`);
+  const total = description ? invoiceLinesTotal([{ quantity, unitPrice, taxPercent }]) : 0;
+  await logAudit("Job", jobId, "INVOICE_CREATED", `Invoice ${invoiceNumber} raised${total > 0 ? ` for ${formatCurrency(total)}` : ""}`);
   revalidatePath(`/jobs/${jobId}`);
   revalidatePath("/jobs");
   revalidatePath("/");
@@ -133,6 +140,61 @@ export async function deleteInvoice(jobId: number, invoiceId: number) {
   revalidatePath(`/jobs/${jobId}`);
   revalidatePath("/jobs");
   revalidatePath("/");
+}
+
+export async function addInvoiceLine(jobId: number, invoiceId: number, formData: FormData) {
+  const sortOrder = await prisma.invoiceLine.count({ where: { invoiceId } });
+  await prisma.invoiceLine.create({
+    data: {
+      invoiceId,
+      description: str(formData, "description"),
+      quantity: num(formData, "quantity", 1),
+      unit: str(formData, "unit") || "item",
+      unitPrice: num(formData, "unitPrice"),
+      taxPercent: num(formData, "taxPercent"),
+      sortOrder,
+    },
+  });
+  revalidatePath(`/jobs/${jobId}`);
+  revalidatePath("/jobs");
+  revalidatePath("/");
+}
+
+export async function updateInvoiceLine(jobId: number, lineId: number, formData: FormData) {
+  await prisma.invoiceLine.update({
+    where: { id: lineId },
+    data: {
+      description: str(formData, "description"),
+      quantity: num(formData, "quantity", 1),
+      unit: str(formData, "unit") || "item",
+      unitPrice: num(formData, "unitPrice"),
+      taxPercent: num(formData, "taxPercent"),
+    },
+  });
+  revalidatePath(`/jobs/${jobId}`);
+  revalidatePath("/jobs");
+  revalidatePath("/");
+}
+
+export async function deleteInvoiceLine(jobId: number, lineId: number) {
+  await prisma.invoiceLine.delete({ where: { id: lineId } });
+  revalidatePath(`/jobs/${jobId}`);
+  revalidatePath("/jobs");
+  revalidatePath("/");
+}
+
+export async function moveInvoiceLine(jobId: number, invoiceId: number, lineId: number, direction: "up" | "down") {
+  const lines = await prisma.invoiceLine.findMany({ where: { invoiceId }, orderBy: { sortOrder: "asc" } });
+  const index = lines.findIndex((l) => l.id === lineId);
+  const swapIndex = direction === "up" ? index - 1 : index + 1;
+  if (index === -1 || swapIndex < 0 || swapIndex >= lines.length) return;
+  const a = lines[index];
+  const b = lines[swapIndex];
+  await prisma.$transaction([
+    prisma.invoiceLine.update({ where: { id: a.id }, data: { sortOrder: b.sortOrder } }),
+    prisma.invoiceLine.update({ where: { id: b.id }, data: { sortOrder: a.sortOrder } }),
+  ]);
+  revalidatePath(`/jobs/${jobId}`);
 }
 
 export async function addPayment(jobId: number, invoiceId: number, formData: FormData) {
@@ -262,10 +324,8 @@ export async function createChargeUpInvoice(jobId: number, formData: FormData) {
   const entryIds = formData.getAll("costEntryIds").map((v) => Number(v));
   if (entryIds.length === 0) return;
 
-  const entries = await prisma.jobCostEntry.findMany({ where: { id: { in: entryIds }, jobId } });
-  const costTotal = entries.reduce((sum, e) => sum + e.amount, 0);
+  const entries = await prisma.jobCostEntry.findMany({ where: { id: { in: entryIds }, jobId }, orderBy: { date: "asc" } });
   const markupPercent = num(formData, "markupPercent");
-  const amount = costTotal * (1 + markupPercent / 100);
 
   const invoice = await prisma.invoice.create({
     data: {
@@ -274,7 +334,16 @@ export async function createChargeUpInvoice(jobId: number, formData: FormData) {
       type: "PROGRESS",
       issueDate: dateOrNull(formData, "issueDate") ?? new Date(),
       dueDate: dateOrNull(formData, "dueDate") ?? new Date(),
-      amount,
+      lines: {
+        create: entries.map((e, i) => ({
+          description: e.description,
+          quantity: 1,
+          unit: "item",
+          unitPrice: e.amount * (1 + markupPercent / 100),
+          taxPercent: 0,
+          sortOrder: i,
+        })),
+      },
     },
   });
 

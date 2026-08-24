@@ -7,6 +7,8 @@ import {
   committedCost,
   daysOverdue,
   employeeTrueCost,
+  invoiceLinesTotal,
+  invoiceLineTotal,
   invoiceOutstanding,
   jobExpectedMarginPercent,
   jobForecast,
@@ -192,6 +194,17 @@ describe("invoicing", () => {
     expect(overdue).toBeGreaterThanOrEqual(4);
 
     expect(daysOverdue(new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), 0)).toBe(0);
+  });
+
+  it("totals invoice lines including per-line tax", () => {
+    expect(invoiceLineTotal({ quantity: 3, unitPrice: 100, taxPercent: 10 })).toBeCloseTo(330);
+    expect(invoiceLineTotal({ quantity: 2, unitPrice: 50 })).toBe(100);
+
+    const total = invoiceLinesTotal([
+      { quantity: 3, unitPrice: 100, taxPercent: 10 },
+      { quantity: 1, unitPrice: 250, taxPercent: 0 },
+    ]);
+    expect(total).toBeCloseTo(580);
   });
 });
 

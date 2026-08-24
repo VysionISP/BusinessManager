@@ -26,12 +26,16 @@ import { VariationList } from "./VariationList";
 import {
   addCostEntry,
   addInvoice,
+  addInvoiceLine,
   addPayment,
   createChargeUpInvoice,
   deleteCostEntry,
   deleteInvoice,
+  deleteInvoiceLine,
   deleteJob,
   deletePayment,
+  moveInvoiceLine,
+  updateInvoiceLine,
   updateJobProgress,
 } from "../actions";
 
@@ -402,10 +406,15 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
                         <InvoiceRow
                           key={inv.id}
                           invoice={inv}
+                          lines={rawInvoice.lines}
                           payments={rawInvoice.payments}
                           addPaymentAction={addPayment.bind(null, jobId, inv.id)}
                           deletePaymentAction={deletePayment.bind(null, jobId)}
                           deleteInvoiceAction={deleteInvoice.bind(null, jobId, inv.id)}
+                          addLineAction={addInvoiceLine.bind(null, jobId, inv.id)}
+                          updateLineAction={updateInvoiceLine.bind(null, jobId)}
+                          deleteLineAction={deleteInvoiceLine.bind(null, jobId)}
+                          moveLineAction={moveInvoiceLine.bind(null, jobId, inv.id)}
                         />
                       );
                     })}
