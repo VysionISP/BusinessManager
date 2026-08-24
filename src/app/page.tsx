@@ -1,42 +1,21 @@
 import Link from "next/link";
 import { Card } from "@/components/Card";
 import { PageHeader } from "@/components/PageHeader";
-import { StatGrid, StatTile } from "@/components/StatTile";
+import { Button } from "@/components/FormField";
+import { StatTile } from "@/components/StatTile";
 import { TrafficBadge } from "@/components/Badge";
 import { Table, Td, Th, THead, Tr } from "@/components/Table";
-import { formatCurrency, formatHours, formatPercent } from "@/lib/format";
+import { formatCurrency, formatPercent } from "@/lib/format";
 import { getDashboardData } from "@/lib/queries";
+import { prisma } from "@/lib/db";
+import { addDays, startOfDay } from "@/lib/dates";
+import { SCHEDULE_EVENT_TYPE_LABELS } from "@/lib/types";
 import type { AlertSeverity } from "@/lib/calculations";
-import {
-  AlertOctagon,
-  AlertTriangle,
-  Banknote,
-  Briefcase,
-  CalendarDays,
-  CalendarRange,
-  Clock,
-  Coins,
-  DollarSign,
-  FileText,
-  FileWarning,
-  Gauge,
-  HardHat,
-  Inbox,
-  Landmark,
-  LineChart,
-  Percent,
-  PiggyBank,
-  Receipt,
-  Scale,
-  Target,
-  Timer,
-  TrendingDown,
-  TrendingUp,
-  Users,
-  Wallet,
-} from "lucide-react";
+import { AlertOctagon, AlertTriangle, Briefcase, CalendarDays, FileWarning, Gauge, Inbox, Landmark, Percent, TrendingUp } from "lucide-react";
 
 export const dynamic = "force-dynamic";
+
+const TIME_FORMATTER = new Intl.DateTimeFormat("en-AU", { hour: "2-digit", minute: "2-digit" });
 
 function buildAlerts(data: Awaited<ReturnType<typeof getDashboardData>>) {
   const alerts: { severity: AlertSeverity; message: string; href?: string }[] = [];
@@ -122,14 +101,35 @@ function buildAlerts(data: Awaited<ReturnType<typeof getDashboardData>>) {
 }
 
 export default async function DashboardPage() {
-  const data = await getDashboardData();
+  const today = startOfDay();
+  const [data, todaysSchedule] = await Promise.all([
+    getDashboardData(),
+    prisma.scheduleEvent.findMany({
+      where: { startAt: { gte: today, lt: addDays(today, 1) } },
+      include: { employee: true, job: true },
+      orderBy: { startAt: "asc" },
+    }),
+  ]);
   const alerts = buildAlerts(data);
 
   return (
     <div>
       <PageHeader
         title="Dashboard"
-        description="Your Monday-morning view: what the business costs to run, what jobs are actually making, and how much cash is on hand."
+        description="Today at a glance — what's on, what needs attention, and where the business stands."
+        actions={
+          <div className="flex items-center gap-2">
+            <Link href="/enquiries/new">
+              <Button variant="secondary">New enquiry</Button>
+            </Link>
+            <Link href="/quotes/new">
+              <Button variant="secondary">New quote</Button>
+            </Link>
+            <Link href="/jobs/new">
+              <Button>New job</Button>
+            </Link>
+          </div>
+        }
       />
 
       {alerts.length > 0 && (
@@ -166,128 +166,79 @@ export default async function DashboardPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-        <Card title="Business running costs" icon={Wallet}>
-          <StatGrid>
-            <StatTile label="Weekly wages" value={formatCurrency(data.runningCosts.weeklyWages)} icon={Banknote} />
-            <StatTile label="Weekly super" value={formatCurrency(data.runningCosts.weeklySuper)} icon={PiggyBank} />
-            <StatTile label="Weekly on-costs" value={formatCurrency(data.runningCosts.weeklyOnCosts)} icon={Receipt} />
-            <StatTile label="Weekly overheads" value={formatCurrency(data.runningCosts.weeklyOverheads)} icon={FileText} />
-          </StatGrid>
-          <div className="mt-4 grid grid-cols-3 gap-3 border-t border-slate-100 pt-4 dark:border-slate-800">
-            <StatTile label="Total weekly cost" value={formatCurrency(data.runningCosts.totalWeeklyCost)} severity="orange" icon={Wallet} />
-            <StatTile label="Monthly cost" value={formatCurrency(data.runningCosts.monthlyCost)} icon={CalendarDays} />
-            <StatTile label="Annual cost" value={formatCurrency(data.runningCosts.annualCost)} icon={CalendarRange} />
-          </div>
-        </Card>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <StatTile label="Active job value" value={formatCurrency(data.totalActiveJobValue)} icon={Briefcase} />
+        <StatTile label="Est. profit (active)" value={formatCurrency(data.estimatedActiveProfit)} icon={TrendingUp} />
+        <StatTile label="Avg margin" value={formatPercent(data.avgActiveMarginPercent)} severity={data.severities.jobMargin} icon={Percent} />
+        <StatTile
+          label="Outstanding invoices"
+          value={formatCurrency(data.outstandingInvoices)}
+          severity={data.severities.overdueInvoices}
+          sublabel={data.overdueInvoiceTotal > 0 ? `${formatCurrency(data.overdueInvoiceTotal)} overdue` : undefined}
+          icon={FileWarning}
+        />
+        <StatTile label="Bank balance" value={formatCurrency(data.currentBankBalance)} severity={data.severities.bankBalance} icon={Landmark} />
+        <StatTile label="Utilisation" value={formatPercent(data.labour.utilisationPercent)} severity={data.severities.utilisation} icon={Gauge} />
+      </div>
 
-        <Card title="Labour" icon={Users}>
-          <StatGrid>
-            <StatTile label="Employees" value={String(data.labour.employeeCount)} icon={Users} />
-            <StatTile label="Available hours" value={formatHours(data.labour.totalAvailableHours)} icon={Clock} />
-            <StatTile label="Billable hours" value={formatHours(data.labour.totalBillableHours)} icon={Timer} />
-            <StatTile
-              label="Utilisation"
-              value={formatPercent(data.labour.utilisationPercent)}
-              severity={data.severities.utilisation}
-              icon={Gauge}
-            />
-            <StatTile label="Avg cost / hour" value={formatCurrency(data.labour.avgCostPerHour, true)} icon={DollarSign} />
-            <StatTile label="Break-even / hour" value={formatCurrency(data.breakEvenRate, true)} icon={Scale} />
-            <StatTile
-              label="Avg charge-out rate"
-              value={formatCurrency(data.labour.avgChargeOutRate, true)}
-              severity={data.severities.chargeOutVsBreakEven}
-              icon={TrendingUp}
-            />
-            <StatTile label="Target rate" value={formatCurrency(data.targetRate, true)} icon={Target} />
-          </StatGrid>
-        </Card>
+      <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <Card title="Today's schedule" icon={CalendarDays}>
+            {todaysSchedule.length > 0 ? (
+              <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+                {todaysSchedule.map((e) => (
+                  <li key={e.id} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
+                    <span className="w-24 shrink-0 text-xs font-medium text-slate-500 dark:text-slate-400">
+                      {TIME_FORMATTER.format(e.startAt)}–{TIME_FORMATTER.format(e.endAt)}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-medium text-slate-800 dark:text-slate-200">
+                        {e.title}
+                        {e.job && (
+                          <>
+                            {" · "}
+                            <Link href={`/jobs/${e.job.id}`} className="text-blue-600 hover:underline">
+                              {e.job.jobNumber}
+                            </Link>
+                          </>
+                        )}
+                      </div>
+                      <div className="truncate text-xs text-slate-400">
+                        {e.employee?.name ?? "Unassigned"} · {SCHEDULE_EVENT_TYPE_LABELS[e.eventType as keyof typeof SCHEDULE_EVENT_TYPE_LABELS] ?? e.eventType}
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="py-4 text-center text-sm text-slate-400">Nothing scheduled for today.</p>
+            )}
+            <Link href="/scheduling" className="mt-3 inline-block text-sm font-medium text-blue-600 hover:underline">
+              Open scheduling →
+            </Link>
+          </Card>
+        </div>
 
-        <Card title="Jobs" icon={Briefcase}>
-          <StatGrid>
-            <StatTile label="Open enquiries" value={String(data.openEnquiries)} sublabel="Sales pipeline" icon={Inbox} />
-            <StatTile label="Quotes awaiting action" value={String(data.quotesAwaitingAction)} icon={FileText} />
-            <StatTile label="Active job value" value={formatCurrency(data.totalActiveJobValue)} icon={Briefcase} />
-            <StatTile label="Est. profit (active)" value={formatCurrency(data.estimatedActiveProfit)} icon={TrendingUp} />
-            <StatTile
-              label="Avg margin"
-              value={formatPercent(data.avgActiveMarginPercent)}
-              severity={data.severities.jobMargin}
-              icon={Percent}
-            />
-            <StatTile
-              label="Work in progress"
-              value={formatCurrency(data.totalWip)}
-              sublabel="Earned but not yet invoiced"
-              icon={HardHat}
-            />
-            <StatTile
-              label="Over budget"
-              value={String(data.jobsOverBudget.length)}
-              severity={data.jobsOverBudget.length === 0 ? "green" : "orange"}
-              icon={AlertTriangle}
-            />
-            <StatTile
-              label="Below target margin"
-              value={String(data.jobsBelowMargin.length)}
-              severity={data.jobsBelowMargin.length === 0 ? "green" : "red"}
-              icon={TrendingDown}
-            />
-          </StatGrid>
-          <div className="mt-4 flex flex-wrap gap-4 text-sm font-medium">
-            <Link href="/enquiries" className="text-blue-600 hover:underline">
-              Enquiries →
-            </Link>
-            <Link href="/quotes" className="text-blue-600 hover:underline">
-              Quotes →
-            </Link>
-            <Link href="/jobs" className="text-blue-600 hover:underline">
-              All jobs →
-            </Link>
-          </div>
-        </Card>
-
-        <Card title="Cash" icon={Landmark}>
-          <StatGrid>
-            <StatTile
-              label="Bank balance"
-              value={formatCurrency(data.currentBankBalance)}
-              severity={data.severities.bankBalance}
-              icon={Landmark}
-            />
-            <StatTile label="Expected in (4 wks)" value={formatCurrency(data.cashExpectedIn4Weeks)} icon={TrendingUp} />
-            <StatTile
-              label="Outstanding invoices"
-              value={formatCurrency(data.outstandingInvoices)}
-              severity={data.severities.overdueInvoices}
-              sublabel={data.overdueInvoiceTotal > 0 ? `${formatCurrency(data.overdueInvoiceTotal)} overdue` : undefined}
-              icon={FileWarning}
-            />
-            <StatTile label="Wages due" value={formatCurrency(data.wagesDue)} sublabel="This week" icon={Banknote} />
-            <StatTile label="Super due" value={formatCurrency(data.superDue)} sublabel="This week" icon={PiggyBank} />
-            <StatTile label="Bills due" value={formatCurrency(data.billsDue)} sublabel="This week" icon={Receipt} />
-            <StatTile
-              label="Cash tied up in jobs"
-              value={formatCurrency(data.cashTiedUpInJobs)}
-              severity={data.severities.cashTiedUp}
-              icon={Coins}
-            />
-            <StatTile
-              label="Forecast balance (4 wks)"
-              value={formatCurrency(data.forecastBankBalance4Weeks)}
-              severity={data.severities.bankBalance}
-              icon={LineChart}
-            />
-          </StatGrid>
-          <div className="mt-4 rounded-lg bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:bg-slate-800/40 dark:text-slate-300">
-            Revenue needed over the next 4 weeks to cover running costs at a {formatPercent(data.settings.targetMarginPercent)} margin:{" "}
-            <strong className="text-slate-900 dark:text-slate-50">{formatCurrency(data.revenueNeededNext4Weeks)}</strong>
-          </div>
-          <Link href="/cashflow" className="mt-3 inline-block text-sm font-medium text-blue-600 hover:underline">
-            View 13-week cashflow →
-          </Link>
-        </Card>
+        <div>
+          <Card title="Sales pipeline" icon={Inbox}>
+            <div className="space-y-3">
+              <Link
+                href="/enquiries"
+                className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2.5 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/60"
+              >
+                <span className="text-sm text-slate-600 dark:text-slate-300">Open enquiries</span>
+                <span className="text-lg font-semibold text-slate-900 dark:text-slate-50">{data.openEnquiries}</span>
+              </Link>
+              <Link
+                href="/quotes"
+                className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2.5 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/60"
+              >
+                <span className="text-sm text-slate-600 dark:text-slate-300">Quotes awaiting action</span>
+                <span className="text-lg font-semibold text-slate-900 dark:text-slate-50">{data.quotesAwaitingAction}</span>
+              </Link>
+            </div>
+          </Card>
+        </div>
       </div>
 
       {(data.jobsBelowMargin.length > 0 || data.jobsOverBudget.length > 0) && (
