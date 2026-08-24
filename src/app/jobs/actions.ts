@@ -246,3 +246,30 @@ export async function deleteVariation(jobId: number, variationId: number) {
   revalidatePath("/jobs");
   revalidatePath("/");
 }
+
+export async function createChargeUpInvoice(jobId: number, formData: FormData) {
+  const entryIds = formData.getAll("costEntryIds").map((v) => Number(v));
+  if (entryIds.length === 0) return;
+
+  const entries = await prisma.jobCostEntry.findMany({ where: { id: { in: entryIds }, jobId } });
+  const costTotal = entries.reduce((sum, e) => sum + e.amount, 0);
+  const markupPercent = num(formData, "markupPercent");
+  const amount = costTotal * (1 + markupPercent / 100);
+
+  const invoice = await prisma.invoice.create({
+    data: {
+      jobId,
+      invoiceNumber: str(formData, "invoiceNumber") || `CU-${Date.now().toString().slice(-6)}`,
+      type: "PROGRESS",
+      issueDate: dateOrNull(formData, "issueDate") ?? new Date(),
+      dueDate: dateOrNull(formData, "dueDate") ?? new Date(),
+      amount,
+    },
+  });
+
+  await prisma.jobCostEntry.updateMany({ where: { id: { in: entryIds } }, data: { invoiceId: invoice.id } });
+
+  revalidatePath(`/jobs/${jobId}`);
+  revalidatePath("/jobs");
+  revalidatePath("/");
+}

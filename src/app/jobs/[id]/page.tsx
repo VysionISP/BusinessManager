@@ -5,8 +5,10 @@ import { PageHeader } from "@/components/PageHeader";
 import { Button, FormField } from "@/components/FormField";
 import { JobStatusBadge, TrafficBadge } from "@/components/Badge";
 import { formatCurrency, formatDate, formatPercent } from "@/lib/format";
+import { progressClaimSummary } from "@/lib/calculations";
 import { getJobDetail } from "@/lib/queries";
 import { JOB_STATUSES, JOB_STATUS_LABELS, PO_STATUS_LABELS, PRICING_METHOD_LABELS } from "@/lib/types";
+import { ChargeUpInvoiceForm } from "./ChargeUpInvoiceForm";
 import { CostEntryForm } from "./CostEntryForm";
 import { InvoiceForm } from "./InvoiceForm";
 import { InvoiceRow } from "./InvoiceRow";
@@ -16,6 +18,7 @@ import {
   addCostEntry,
   addInvoice,
   addPayment,
+  createChargeUpInvoice,
   deleteCostEntry,
   deleteInvoice,
   deleteJob,
@@ -260,6 +263,12 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
             </div>
           </Card>
 
+          {job.pricingMethod === "CHARGE_UP" && (
+            <Card title="Charge-up invoicing — unbilled costs">
+              <ChargeUpInvoiceForm unbilledEntries={job.costEntries.filter((e) => !e.invoiceId)} action={createChargeUpInvoice.bind(null, jobId)} />
+            </Card>
+          )}
+
           <Card title="Invoices & payments">
             <div className="mb-4">
               <InvoiceForm action={boundAddInvoice} />
@@ -338,6 +347,23 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
               {financials.hasOverdueInvoice && <p className="text-xs font-medium text-rose-600">One or more invoices are overdue.</p>}
             </div>
           </Card>
+
+          {job.retentionPercent > 0 && (
+            <Card title="Progress claim summary">
+              {(() => {
+                const claim = progressClaimSummary(financials.revisedContractValue, financials.totalInvoiced, job.invoices, job.retentionPercent);
+                return (
+                  <div className="space-y-2 text-sm">
+                    <Row label="Revised contract value" value={formatCurrency(claim.revisedContractValue)} />
+                    <Row label="Claimed to date" value={formatCurrency(claim.totalClaimedToDate)} />
+                    <Row label="Remaining contract" value={formatCurrency(claim.remainingContract)} />
+                    <div className="my-2 border-t border-slate-100 dark:border-slate-800" />
+                    <Row label={`Retention held (${job.retentionPercent}%)`} value={formatCurrency(claim.retentionHeld)} bold />
+                  </div>
+                );
+              })()}
+            </Card>
+          )}
         </div>
       </div>
     </div>

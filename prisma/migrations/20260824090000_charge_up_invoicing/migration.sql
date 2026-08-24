@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "JobCostEntry" ADD COLUMN "invoiceId" INTEGER REFERENCES "Invoice" ("id") ON DELETE SET NULL ON UPDATE CASCADE;

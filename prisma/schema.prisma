@@ -358,6 +358,10 @@ model JobCostEntry {
   description String
   hours       Float? // informational, only meaningful for LABOUR
   amount      Float
+  // Set once this cost has been pulled onto a charge-up invoice — lets a
+  // charge-up job show which actual costs are still unbilled.
+  invoiceId   Int?
+  invoice     Invoice?  @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
   createdAt   DateTime  @default(now())
 
   supplierInvoice SupplierInvoice?
@@ -381,7 +385,8 @@ model Invoice {
   amount        Float
   createdAt     DateTime @default(now())
 
-  payments Payment[]
+  payments    Payment[]
+  costEntries JobCostEntry[]
 
   @@index([jobId])
 }

@@ -13,10 +13,12 @@ import {
   jobWip,
   markupFromPrice,
   priceForMargin,
+  progressClaimSummary,
   purchaseOrderTotal,
   quoteAtMargins,
   quoteDirectCost,
   quoteTotals,
+  retentionHeld,
   variationProfit,
   variationSellPrice,
 } from "./calculations";
@@ -223,6 +225,26 @@ describe("variations", () => {
     expect(effective.quoteAmount).toBeCloseTo(20600); // only the approved variation counted
     expect(effective.budgetLabourCost).toBeCloseTo(8400);
     expect(job.quoteAmount).toBe(20000); // original untouched
+  });
+});
+
+describe("progress claims & retention", () => {
+  it("only withholds retention from PROGRESS-type invoices", () => {
+    const invoices = [
+      { type: "DEPOSIT", amount: 10000 },
+      { type: "PROGRESS", amount: 20000 },
+      { type: "PROGRESS", amount: 15000 },
+      { type: "FINAL", amount: 5000 },
+    ];
+    expect(retentionHeld(invoices, 5)).toBeCloseTo((20000 + 15000) * 0.05);
+    expect(retentionHeld(invoices, 0)).toBe(0);
+  });
+
+  it("summarises revised contract, claimed and remaining", () => {
+    const invoices = [{ type: "PROGRESS", amount: 20000 }];
+    const summary = progressClaimSummary(60000, 30000, invoices, 5);
+    expect(summary.remainingContract).toBe(30000);
+    expect(summary.retentionHeld).toBeCloseTo(1000);
   });
 });
 

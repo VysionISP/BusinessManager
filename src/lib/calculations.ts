@@ -513,6 +513,35 @@ export function jobCashPosition(actualTotalCost: number, cashReceived: number): 
 }
 
 // ---------------------------------------------------------------------------
+// Progress claims & retention
+// ---------------------------------------------------------------------------
+
+export interface ProgressClaimSummary {
+  revisedContractValue: number;
+  totalClaimedToDate: number;
+  remainingContract: number;
+  retentionHeld: number;
+}
+
+/**
+ * Retention withheld on PROGRESS invoices (retentionPercent% of each,
+ * released separately once the job reaches practical completion).
+ */
+export function retentionHeld(invoices: { type: string; amount: number }[], retentionPercent: number): number {
+  if (retentionPercent <= 0) return 0;
+  return invoices.filter((i) => i.type === "PROGRESS").reduce((sum, i) => sum + i.amount * (retentionPercent / 100), 0);
+}
+
+export function progressClaimSummary(revisedContractValue: number, totalInvoiced: number, invoices: { type: string; amount: number }[], retentionPercent: number): ProgressClaimSummary {
+  return {
+    revisedContractValue,
+    totalClaimedToDate: totalInvoiced,
+    remainingContract: revisedContractValue - totalInvoiced,
+    retentionHeld: retentionHeld(invoices, retentionPercent),
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Invoicing
 // ---------------------------------------------------------------------------
 
